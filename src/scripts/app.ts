@@ -1,5 +1,6 @@
 import { mp3Seconds, toSlotMp3 } from "../lib/audio";
-import { LANG_NAMES, packPath, packUrl, relayUrl } from "../lib/manifest";
+import { asset } from "../lib/base";
+import { LANG_NAMES, packPath, packUrl, mirrorUrl } from "../lib/manifest";
 import * as store from "../lib/store";
 import { buildPack, IMAGE_SIZE, imageOverhead, isVoicePack, loadPack, SLOT_LABELS, type VoicePack } from "../lib/voicepack";
 import { Xm4DirectUpdater } from "../lib/xm4-fota";
@@ -101,10 +102,10 @@ function initLanguages() {
 
 // ---------- Sony files ----------
 
-/** Fetch a file from Sony via the site's /sony/ relay. Returns undefined if the relay isn't available. */
+/** Fetch the site's copy of a Sony file (public/sony/). Returns undefined if it's missing or invalid. */
 async function fetchSony(path: string, valid: (raw: Uint8Array) => boolean): Promise<Uint8Array | undefined> {
   try {
-    const r = await fetch(relayUrl(path));
+    const r = await fetch(mirrorUrl(path));
     if (!r.ok) return undefined;
     const raw = new Uint8Array(await r.arrayBuffer());
     return valid(raw) ? raw : undefined;
@@ -177,9 +178,9 @@ async function addSonyFiles(files: File[]) {
 // ---------- sounds ----------
 
 async function loadSounds() {
-  const library: { file: string; name: string; size: number }[] = await fetch("/sounds/index.json").then((r) => r.json());
+  const library: { file: string; name: string; size: number }[] = await fetch(asset("sounds/index.json")).then((r) => r.json());
   const sounds: Sound[] = library
-    .map((s): Sound => ({ id: `library/${s.file}`, kind: "library", name: s.name, size: s.size, url: `/sounds/${s.file}` }))
+    .map((s): Sound => ({ id: `library/${s.file}`, kind: "library", name: s.name, size: s.size, url: asset(`sounds/${s.file}`) }))
     .filter((s) => !state.hiddenLibrary.includes(s.id));
   for (const key of (await store.keys()).filter((k) => k.startsWith("sound:")).sort()) {
     const data = (await store.get(key))!;

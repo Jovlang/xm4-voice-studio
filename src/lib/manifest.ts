@@ -2,6 +2,7 @@
 import { ecb } from "@noble/ciphers/aes.js";
 import { sha1 } from "@noble/hashes/legacy.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
+import { asset } from "./base";
 
 // From com.sony.songpal.automagic Y6.d.
 const INFO_XML_KEY = new Uint8Array([0x4f, 0xa2, 0x79, 0x99, 0xff, 0xd0, 0x8b, 0x1f, 0xe4, 0xd2, 0x60, 0xd5, 0x7b, 0x6d, 0x3c, 0x17]);
@@ -13,14 +14,14 @@ export const LANG_NAMES: Record<string, string> = {
 };
 export const langPackId = (code: string) => `VGIDLPB04${code}`;
 const CDN = "https://info.update.sony.net";
-// Paths on Sony's CDN. The site fetches them through its own /sony/ relay (Sony sends no CORS headers):
-// the Vite dev-server proxy in astro.config.mjs, or functions/sony/[[path]].ts when hosted.
+// Paths on Sony's CDN. Sony sends no CORS headers, so the site serves copies of these files itself,
+// mirrored under public/sony/ with the same paths.
 export const packPath = (code: string) =>
   `/${MODEL}/${langPackId(code)}/contents/0002/VP_${LANG_NAMES[code]}_UPG_03.bin`;
 export const infoPath = (code: string) => `/${MODEL}/${langPackId(code)}/info/info.xml`;
 export const packUrl = (code: string) => CDN + packPath(code);
 export const infoUrl = (code: string) => CDN + infoPath(code);
-export const relayUrl = (path: string) => `/sony${path}`;
+export const mirrorUrl = (path: string) => asset(`sony${path}`);
 
 const te = new TextEncoder();
 const td = new TextDecoder();

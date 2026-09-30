@@ -7,6 +7,7 @@ import "@fontsource/arvo/700.css";
 import "@fontsource/instrument-serif/400.css";
 import dsegUrl from "dseg/fonts/DSEG14-Classic/DSEG14Classic-Regular.woff2?url";
 import "../styles/global.css";
+import { asset } from "../lib/base";
 
 /** Cassette-label header for each step: English title and katakana subtitle. */
 const steps = {
@@ -26,9 +27,9 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" href="/favicon.ico" sizes="32x32" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="icon" href={asset("favicon.ico")} sizes="32x32" />
+  <link rel="icon" type="image/svg+xml" href={asset("favicon.svg")} />
+  <link rel="apple-touch-icon" href={asset("apple-touch-icon.png")} />
   <meta name="theme-color" content="#0b0b0c" />
   <title>XM4 Voice Studio</title>
   <meta name="description" content="Create custom voice prompts for Sony WH-1000XM4 headphones." />
@@ -43,7 +44,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
       </span>
       <div class="copy">
         <span class="slab" aria-hidden="true"></span>
-        <img class="cans" src="/xm4-headphones.webp" alt="" width="363" height="735" />
+        <img class="cans" src={asset("xm4-headphones.webp")} alt="" width="363" height="735" />
         <p class="kicker">High fidelity Stereo Headphones</p>
         <span class="rule" aria-hidden="true"></span>
         <p class="headline">Now the difference is perfectly clear.</p>
