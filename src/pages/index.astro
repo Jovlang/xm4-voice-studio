@@ -1,0 +1,233 @@
+---
+import "@fontsource-variable/archivo/wdth.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/600.css";
+import "@fontsource/dotgothic16/400.css";
+import "@fontsource/arvo/700.css";
+import "@fontsource/instrument-serif/400.css";
+import dsegUrl from "dseg/fonts/DSEG14-Classic/DSEG14Classic-Regular.woff2?url";
+import "../styles/global.css";
+
+/** Cassette-label header for each step: English title and katakana subtitle. */
+const steps = {
+  prompts: { title: "Voice prompts", jp: "ボイスガイダンス", code: "VG-54" },
+  install: { title: "Install on headphones", jp: "インストール", code: "FOTA" },
+};
+/** "It's a Sony" dot mark: 7 rows of dots growing left to right, row lengths as on the original. */
+const markRadii = [7, 10, 12, 13, 14.5, 15, 15.5];
+const markDots = [6, 5, 5, 6, 7, 7, 6].flatMap((len, row) =>
+  markRadii.slice(0, len).map((r, col) => [17.5 + col * 35, 17.5 + row * 35, r]),
+);
+const bands = ["63", "160", "400", "1k", "2.5k", "6.3k", "16k"];
+const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") format("woff2"); font-display: block; }`;
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="theme-color" content="#0b0b0c" />
+  <title>XM4 Voice Studio</title>
+  <meta name="description" content="Create custom voice prompts for Sony WH-1000XM4 headphones." />
+  <style is:inline set:html={segFont}></style>
+</head>
+<body>
+  <header class="faceplate">
+    <div class="poster">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 245 245">{markDots.map(([cx, cy, r]) => <circle cx={cx} cy={cy} r={r} />)}</svg>
+        <b>XM4</b>
+      </span>
+      <div class="copy">
+        <span class="slab" aria-hidden="true"></span>
+        <img class="cans" src="/xm4-headphones.webp" alt="" width="363" height="735" />
+        <p class="kicker">High fidelity Stereo Headphones</p>
+        <span class="rule" aria-hidden="true"></span>
+        <p class="headline">Now the difference is perfectly clear.</p>
+        <h1 class="model">WH-1000XM4</h1>
+      </div>
+      <div class="foot">
+        <p class="tagline">Swap the voice prompts on your Sony WH-1000XM4 for your own sounds. Everything runs in your browser.</p>
+        <dl class="specs">
+          <div><dt>Format</dt><dd>48 kHz · Mono · MP3</dd></div>
+          <div><dt>Slots</dt><dd>54 tracks</dd></div>
+          <div><dt>Link</dt><dd>RFCOMM</dd></div>
+        </dl>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="module">
+      <div class="body">
+        <div class="row top-row">
+          <label class="field">Base language · what unchanged prompts say
+            <select id="source"></select>
+          </label>
+          <!-- Your sounds: a cassette-deck door that cracks open on hover; clicking fades in the tape bay. -->
+          <div id="dock" class="dock" tabindex="0" aria-label="Your sounds">
+            <div class="dock-door" aria-hidden="true">
+              <span class="door-face">
+                <span class="door-title"><span class="tick">A</span>Your sounds <span class="jp">カセット</span></span>
+                <span class="door-window"><span id="soundCount">0 tapes</span></span>
+                <span class="door-eject">▲ Eject</span>
+              </span>
+            </div>
+            <div class="dock-bay">
+              <div id="soundDrop" class="drop"><b>Insert tape</b> · drop audio files here or <u>click to upload</u>. Most audio and video formats work, and they're converted to 48 kHz mono MP3. Keep them short.</div>
+              <input id="soundFile" type="file" accept="audio/*,video/*" multiple hidden />
+              <div id="sounds" class="chips"></div>
+            </div>
+          </div>
+        </div>
+        <div id="sonyManual" class="alert" hidden>
+          <p id="sonySummary" class="alert-title"></p>
+          <p>Download it with the link below and drop it here. It's stored in your browser.</p>
+          <ul class="files">
+            <li>Voice pack: <a id="packLink" target="_blank" rel="noopener"></a></li>
+          </ul>
+          <div id="sonyDrop" class="drop">Drop the downloaded <code>.bin</code> here or <u>click to choose</u></div>
+          <input id="sonyFile" type="file" multiple hidden />
+        </div>
+        <div class="rack">
+          <div id="eq" class="stereo" aria-hidden="true">
+            {["L", "R"].map((ch) => (
+              <div class={`bank bank-${ch}`}>
+                <span class="ch">{ch}</span>
+                <div class="grid">
+                  {bands.map(() => <div class="col"></div>)}
+                  <div class="range" data-ch={ch}></div>
+                  {bands.map((b) => <span class="freq">{b}</span>)}
+                  <span class="freq">{ch === "L" ? "Time" : "Store"}</span>
+                </div>
+              </div>
+            )).flatMap((bank, i) => i === 0 ? [bank, (
+              <div class="seg">
+                <div class="seg-row"><span class="ghost">~~</span><span class="seg-top">XM</span></div>
+                <div class="seg-row"><span class="ghost">~~</span><span class="seg-bottom">04</span></div>
+                <span class="freq">Set</span>
+              </div>
+            )] : [bank])}
+          </div>
+          <div class="rack-bottom">
+            <span class="logo" aria-hidden="true">SONY</span>
+            <span class="rack-led" aria-hidden="true"></span>
+            <div class="vfd">
+              <svg class="vfd-disc" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2.5" /><path d="M12 3a9 9 0 0 1 9 9" /></svg>
+              <div class="vfd-main">
+                <span class="vfd-label">Now playing</span>
+                <span id="vfdText" class="vfd-text">Standby</span>
+              </div>
+              <span id="eqTime" class="vfd-time">00:00:00</span>
+              <span class="vfd-small">Voice · 48kHz · Mono · Multi voice player</span>
+            </div>
+          </div>
+        </div>
+        <!-- Prompt assignments: a green bounty-terminal screen set into a dark frame. -->
+        <div class="terminal">
+          <div class="screen">
+            <div class="screen-window">
+              <div id="slotList" class="screen-list" tabindex="0" aria-label="Prompts">
+                <table>
+                  <thead><tr><th>TRK</th><th aria-label="Play stock sound"></th><th>Prompt</th><th>Replace with</th><th aria-label="Play replacement sound"></th><th>Size</th></tr></thead>
+                  <tbody id="slots"></tbody>
+                </table>
+              </div>
+              <div id="slotRail" class="matrix-rail" aria-hidden="true"><i></i></div>
+            </div>
+            <div class="screen-foot">
+              <div class="tabs">
+                <label class="tab"><input type="checkbox" id="showAll" /> Show all slots</label>
+                <button id="reset" class="tab">Reset to stock</button>
+              </div>
+              <span id="capText" class="screen-stat" tabindex="-1"></span>
+              <div id="cap" class="meter" aria-hidden="true"><div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="module">
+      <div class="body">
+        <p id="btUnsupported" class="err" hidden>This browser can't open Bluetooth serial connections. Use current desktop Chrome or Edge.</p>
+        <div class="columns">
+          <div>
+            <h3><span class="tick">A</span>Before you start</h3>
+            <ul class="checks">
+              <li>Headphones paired with <b>this computer</b> in its Bluetooth settings, and disconnected from your phone.</li>
+              <li>Battery at least 50%. It stops on its own below that.</li>
+            </ul>
+          </div>
+          <div>
+            <h3><span class="tick">B</span>Install</h3>
+            <ol class="steps">
+              <li>Click <b>Control channel</b>, then <b>Update channel</b>; choose <b>WH-1000XM4</b> each time.</li>
+              <li>Optional: <b>Check</b> tests without installing.</li>
+              <li><b>Install</b> takes about 15 minutes. Keep the headphones nearby.</li>
+              <li>They switch off when done. When the light stops blinking, turn them on.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="rack">
+          <div class="transport">
+            <div class="transport-control" data-status="off"><button id="btMdr" class="key">Control channel</button><span class="transport-led" aria-hidden="true"></span></div>
+            <div class="transport-control" data-status="off"><button id="btRace" class="key">Update channel</button><span class="transport-led" aria-hidden="true"></span></div>
+            <div class="transport-control" data-status="off"><button id="btCheck" class="key" aria-label="Check without installing" disabled>Check</button><span class="transport-led" aria-hidden="true"></span></div>
+            <div class="transport-control" data-status="off"><button id="btInstall" class="key primary" aria-label="Install on headphones" disabled>Install</button><span class="transport-led" aria-hidden="true"></span></div>
+          </div>
+        </div>
+        <div id="btProgress" class="deck" hidden>
+          <svg class="cassette" viewBox="0 0 360 228" role="img" aria-label="Transfer progress">
+            <rect class="shell" x="4" y="4" width="352" height="220" rx="14" />
+            <rect class="sticker" x="22" y="20" width="316" height="130" rx="6" />
+            <rect class="stripe s1" x="22" y="40" width="316" height="7" />
+            <rect class="stripe s2" x="22" y="47" width="316" height="7" />
+            <rect class="stripe s3" x="22" y="54" width="316" height="7" />
+            <text class="sticker-text" x="34" y="33">XM4 VOICE STUDIO · SIDE A</text>
+            <text class="sticker-jp" x="326" y="33" text-anchor="end">ボイス</text>
+            <rect class="window" x="92" y="74" width="176" height="64" rx="32" />
+            <clipPath id="tapeWindow"><rect x="92" y="74" width="176" height="64" rx="32" /></clipPath>
+            <g clip-path="url(#tapeWindow)">
+              <circle class="pack left" cx="124" cy="106" r="46" />
+              <circle class="pack right" cx="236" cy="106" r="46" />
+            </g>
+            <g transform="translate(124 106)"><g class="reel"><circle r="17" /><path d="M0-17V-8M14.7 8.5 7 4M-14.7 8.5-7 4" /></g></g>
+            <g transform="translate(236 106)"><g class="reel"><circle r="17" /><path d="M0-17V-8M14.7 8.5 7 4M-14.7 8.5-7 4" /></g></g>
+            <path class="bottom" d="M70 224l14-52h192l14 52" />
+            <circle class="hole" cx="118" cy="200" r="7" />
+            <circle class="hole" cx="242" cy="200" r="7" />
+          </svg>
+          <div class="deck-side">
+            <p class="lcd-label">Tape counter</p>
+            <p id="btStatus" class="lcd counter"></p>
+            <div id="btBar" class="meter"><div></div></div>
+          </div>
+        </div>
+        <pre id="btLog" class="lcd"><span id="btConnectionStatus" class="terminal-status" aria-live="polite"></span><span id="btLogLines"></span><span id="btTerminalProgress" class="terminal-progress" role="progressbar" aria-label="Voice pack transfer" aria-valuemin="0" aria-valuemax="100" hidden></span></pre>
+        <details>
+          <summary>Troubleshooting and undo</summary>
+          <dl>
+            <dt>The picker doesn't list the headphones</dt>
+            <dd>Pair them with this computer first (system Bluetooth settings), make sure they're connected, then click the button again.</dd>
+            <dt>It stops with an error</dt>
+            <dd>The pack is only installed at the very end, after the headphones have verified it, so an error before that leaves your current prompts in place. Reconnect both channels and try again.</dd>
+            <dt>The headphones don't turn back on</dt>
+            <dd>Wait a minute, then hold the power button for 2 seconds. If nothing happens, plug in the charging cable for a few minutes and try again.</dd>
+            <dt>Undo: go back to Sony's prompts</dt>
+            <dd>Connect both channels, then <button id="btRestore" class="key small" disabled>Restore stock prompts</button> installs Sony's unmodified <b class="sourceName"></b> pack the same way.</dd>
+          </dl>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="underside">
+    <span class="barcode" aria-hidden="true"></span>
+    <p>Not affiliated with Sony. Modifying your headphones is at your own risk.</p>
+    <p class="jp">非公式 · ブラウザ製</p>
+  </footer>
+  <script src="../scripts/app.ts"></script>
+</body>
+</html>

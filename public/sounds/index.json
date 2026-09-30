@@ -1,0 +1,42 @@
+[
+  {
+    "file": "botw_get_item.mp3",
+    "name": "botw_get_item",
+    "size": 18861
+  },
+  {
+    "file": "connect.mp3",
+    "name": "connect",
+    "size": 8685
+  },
+  {
+    "file": "disconnect.mp3",
+    "name": "disconnect",
+    "size": 8493
+  },
+  {
+    "file": "iphone_lock.mp3",
+    "name": "iphone_lock",
+    "size": 15793
+  },
+  {
+    "file": "lowBattery.mp3",
+    "name": "lowBattery",
+    "size": 10797
+  },
+  {
+    "file": "noiseCancellation.mp3",
+    "name": "noiseCancellation",
+    "size": 8301
+  },
+  {
+    "file": "noiseControlOff.mp3",
+    "name": "noiseControlOff",
+    "size": 8301
+  },
+  {
+    "file": "transparency.mp3",
+    "name": "transparency",
+    "size": 8493
+  }
+]
