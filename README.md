@@ -2,6 +2,8 @@
 
 Standalone Astro website for creating and installing custom voice prompts on Sony WH-1000XM4 headphones. Pack creation runs in the browser.
 
+**Live site:** https://sadsarches.codeberg.page/xm4-voice-studio/
+
 ```bash
 npm install
 npm run dev      # http://localhost:4321
