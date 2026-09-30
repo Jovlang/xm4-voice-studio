@@ -831,11 +831,11 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
 }
 /* Fixed layout keeps the panel borders aligned while long names truncate. */
 .screen table { width: 100%; min-width: 680px; table-layout: fixed; border-collapse: collapse; }
-.screen th:nth-child(1) { width: 42px; }
+.screen th:nth-child(1) { width: 54px; }
 .screen th:nth-child(2) { width: var(--row); }
 .screen th:nth-child(4) { width: 250px; }
 .screen th:nth-child(5) { width: var(--row); }
-.screen th:nth-child(6) { width: 100px; }
+.screen th:nth-child(6) { width: 110px; }
 .screen tbody tr { height: var(--row); }
 .screen thead th { height: var(--head); background: #0a1a10; border-bottom: 3px solid var(--crt-line); }
 .screen th {

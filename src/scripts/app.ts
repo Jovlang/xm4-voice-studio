@@ -35,7 +35,8 @@ const state = {
 };
 const packCache = new Map<string, VoicePack>();
 const bt = { transport: new Xm4Transport(), busy: false };
-const audio = new Audio();
+// Kept in the document: Chrome can abort play() on a detached element ("media was removed from the document").
+const audio = $<HTMLAudioElement>("preview");
 const eq = new StereoEq($("eq"), audio, { text: $("vfdText"), time: $("eqTime") });
 
 function save() {
@@ -57,7 +58,10 @@ const fetchedUrls = new Map<string, string>();
 /** What the step 1 display shows while a sound plays: readout code, number, and title. */
 interface Track { code: string; number?: number; title: string }
 
+let playRequest = 0;
+
 async function play(url: string, track: Track) {
+  const request = ++playRequest;
   eq.connect(); // inside the click, so the AudioContext may start
   eq.load(track.code, track.number, track.title);
   try {
@@ -71,9 +75,17 @@ async function play(url: string, track: Track) {
       }
       url = blob;
     }
+    if (request !== playRequest) return; // a later click took over while this one was downloading
     audio.src = url;
-    await audio.play();
+    try {
+      await audio.play();
+    } catch (e) {
+      // An interrupted start (AbortError) isn't a broken sound: retry once unless a later click replaced it.
+      if ((e as DOMException).name !== "AbortError") throw e;
+      if (request === playRequest) await audio.play();
+    }
   } catch (e) {
+    if (request !== playRequest || (e as DOMException).name === "AbortError") return;
     console.error("playback failed", url, e);
     alert(`Couldn't play this sound: ${(e as Error).message}`);
   }
