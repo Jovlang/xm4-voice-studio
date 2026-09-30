@@ -1,5 +1,4 @@
-/** Eight fixed table rows. Navigation changes their contents without moving the table. */
-const VISIBLE_ROWS = 8;
+/** A fixed number of table rows (the list's --rows, 8 by default). Navigation changes their contents without moving the table. */
 const DOT = 8; // rail dot pitch in px, matching the .matrix-rail background
 
 export function stepScroll(list: HTMLElement, rail: HTMLElement) {
@@ -7,14 +6,16 @@ export function stepScroll(list: HTMLElement, rail: HTMLElement) {
   let count = 0;
   let first = 0;
   let render = (_first: number, _end: number) => {};
-  const maxStep = () => Math.max(0, count - VISIBLE_ROWS);
+  const rowsFromCss = () => Number(getComputedStyle(list).getPropertyValue("--rows")) || 8;
+  let visible = rowsFromCss();
+  const maxStep = () => Math.max(0, count - visible);
 
   function paint() {
     const max = maxStep();
     rail.hidden = max === 0;
     if (!max) return;
     const dots = Math.floor(rail.clientHeight / DOT);
-    const size = Math.min(dots, Math.max(2, Math.round(dots * VISIBLE_ROWS / count)));
+    const size = Math.min(dots, Math.max(2, Math.round(dots * visible / count)));
     thumb.style.height = `${size * DOT}px`;
     thumb.style.top = `${Math.round(first / max * (dots - size)) * DOT}px`;
   }
@@ -23,7 +24,7 @@ export function stepScroll(list: HTMLElement, rail: HTMLElement) {
     const next = Math.min(maxStep(), Math.max(0, n));
     if (next === first) return false;
     first = next;
-    render(first, Math.min(count, first + VISIBLE_ROWS));
+    render(first, Math.min(count, first + visible));
     paint();
     return true;
   }
@@ -63,7 +64,7 @@ export function stepScroll(list: HTMLElement, rail: HTMLElement) {
     // Rows are replaced during a swipe, so capture on the list before removing
     // the touched row. Subsequent moves still reach this stable element.
     if (!list.hasPointerCapture(e.pointerId)) list.setPointerCapture(e.pointerId);
-    const pitch = list.clientHeight / VISIBLE_ROWS;
+    const pitch = list.clientHeight / visible;
     const rows = Math.trunc(-dy / (pitch * 0.6));
     if (rows && go(first + rows)) touchY = e.clientY;
   });
@@ -76,7 +77,7 @@ export function stepScroll(list: HTMLElement, rail: HTMLElement) {
   list.addEventListener("keydown", (e) => {
     if (e.target !== list) return;
     const to = { ArrowDown: first + 1, ArrowUp: first - 1,
-      PageDown: first + VISIBLE_ROWS - 1, PageUp: first - VISIBLE_ROWS + 1,
+      PageDown: first + visible - 1, PageUp: first - visible + 1,
       Home: 0, End: maxStep() }[e.key];
     if (to !== undefined) {
       go(to);
@@ -96,13 +97,22 @@ export function stepScroll(list: HTMLElement, rail: HTMLElement) {
     if (rail.hasPointerCapture(e.pointerId)) seek(e);
   });
   new ResizeObserver(paint).observe(rail);
+  // The row count changes with the layout (fewer, taller rows on small screens).
+  new ResizeObserver(() => {
+    const next = rowsFromCss();
+    if (next === visible) return;
+    visible = next;
+    first = Math.min(first, maxStep());
+    render(first, Math.min(count, first + visible));
+    paint();
+  }).observe(list);
 
   return {
     setRows(nextCount: number, nextRender: (first: number, end: number) => void) {
       count = nextCount;
       render = nextRender;
       first = Math.min(first, maxStep());
-      render(first, Math.min(count, first + VISIBLE_ROWS));
+      render(first, Math.min(count, first + visible));
       paint();
     },
   };
