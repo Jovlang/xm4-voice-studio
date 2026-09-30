@@ -307,8 +307,8 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
   box-shadow: 0 0 8px rgba(239, 76, 66, .7), inset 0 1px 2px rgba(255, 255, 255, .35);
 }
 @keyframes transport-pulse { to { opacity: .4; } }
-/* Low, closely spaced mechanical keys set into the deck faceplate. */
-.transport button {
+/* Low, closely spaced mechanical keys set into the deck faceplate. The sound bay's keys share the look. */
+.transport button, .dock-bay button {
   --cap-top: 3px;
   --cap-bottom: 7px;
   --side: 4px;
@@ -323,7 +323,7 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
   letter-spacing: .035em;
   box-shadow: inset 0 2px 4px #000, inset 0 0 0 1px #08090b;
 }
-.transport button::before {
+.transport button::before, .dock-bay button::before {
   inset: var(--cap-top) 3px var(--cap-bottom);
   border-radius: 3px;
   background: linear-gradient(180deg, #d6d5cf 0%, #aaa9a3 18%, #8d8d88 88%, #737570 100%);
@@ -331,8 +331,8 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
     inset 0 1px 0 rgba(255, 255, 255, .8), inset 1px 0 0 rgba(255, 255, 255, .25),
     inset 0 -1px 0 rgba(0, 0, 0, .35);
 }
-.transport button:hover:not(:disabled)::before { background: linear-gradient(180deg, #e0dfd9 0%, #b4b3ad 18%, #969691 88%, #7b7d78 100%); }
-.transport button:active:not(:disabled), .transport button.on {
+.transport button:hover:not(:disabled)::before, .dock-bay button:hover:not(:disabled)::before { background: linear-gradient(180deg, #e0dfd9 0%, #b4b3ad 18%, #969691 88%, #7b7d78 100%); }
+.transport button:active:not(:disabled), .transport button.on, .dock-bay button:active:not(:disabled) {
   --cap-top: 5px;
   --cap-bottom: 5px;
   --side: 2px;
@@ -344,7 +344,7 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
   --side: 2px;
   padding: 15px 14px 15px;
 }
-.transport button:active:not(:disabled)::before, .transport button.on::before {
+.transport button:active:not(:disabled)::before, .transport button.on::before, .dock-bay button:active:not(:disabled)::before {
   background: linear-gradient(180deg, #c7c6c0 0%, #a2a19b 18%, #858580 88%, #70726d 100%);
   box-shadow: 0 var(--side) 0 #393b3d, inset 0 2px 2px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 255, 255, .4);
 }
@@ -352,7 +352,7 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
   background: linear-gradient(180deg, #c7c6c0 0%, #a2a19b 18%, #858580 88%, #70726d 100%);
   box-shadow: 0 var(--side) 0 #393b3d, inset 0 2px 2px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 255, 255, .4);
 }
-.transport button:disabled {
+.transport button:disabled, .dock-bay button:disabled {
   --cap-top: 5px;
   --cap-bottom: 5px;
   --side: 2px;
@@ -360,17 +360,17 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
   color: #5f605d;
   text-shadow: 0 1px 0 rgba(255, 255, 255, .2);
 }
-.transport button:disabled::before { background: linear-gradient(180deg, #c7c6c0 0%, #a6a5a0 18%, #888985 88%, #747672 100%); }
-.transport button:disabled::before {
+.transport button:disabled::before, .dock-bay button:disabled::before { background: linear-gradient(180deg, #c7c6c0 0%, #a6a5a0 18%, #888985 88%, #747672 100%); }
+.transport button:disabled::before, .dock-bay button:disabled::before {
   box-shadow: 0 var(--side) 0 #393b3d, inset 0 2px 2px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 255, 255, .4);
 }
 .transport button:disabled:hover { color: #444643; }
 .transport button:disabled:hover::before { background: linear-gradient(180deg, #d2d1cb 0%, #afaea8 18%, #92938f 88%, #7b7d79 100%); }
-.transport button.primary { color: #fff0e8; text-shadow: 0 1px 1px rgba(75, 0, 0, .65); }
-.transport button.primary::before { background: linear-gradient(180deg, #ee5847 0%, #d6382b 18%, #b62620 88%, #941b18 100%); box-shadow: 0 var(--side) 0 #631713, 0 calc(var(--side) + 1px) 3px #000, inset 0 1px 0 rgba(255, 220, 210, .6), inset 0 -1px 0 rgba(60, 0, 0, .45); }
-.transport button.primary:hover:not(:disabled)::before { background: linear-gradient(180deg, #f36554 0%, #e04133 18%, #c52d25 88%, #9f211c 100%); }
-.transport button.primary:disabled { color: #f0d5ce; text-shadow: 0 1px 1px rgba(75, 0, 0, .5); }
-.transport button.primary:disabled::before {
+.transport button.primary, .dock-bay button.primary { color: #fff0e8; text-shadow: 0 1px 1px rgba(75, 0, 0, .65); }
+.transport button.primary::before, .dock-bay button.primary::before { background: linear-gradient(180deg, #ee5847 0%, #d6382b 18%, #b62620 88%, #941b18 100%); box-shadow: 0 var(--side) 0 #631713, 0 calc(var(--side) + 1px) 3px #000, inset 0 1px 0 rgba(255, 220, 210, .6), inset 0 -1px 0 rgba(60, 0, 0, .45); }
+.transport button.primary:hover:not(:disabled)::before, .dock-bay button.primary:hover:not(:disabled)::before { background: linear-gradient(180deg, #f36554 0%, #e04133 18%, #c52d25 88%, #9f211c 100%); }
+.transport button.primary:disabled, .dock-bay button.primary:disabled { color: #f0d5ce; text-shadow: 0 1px 1px rgba(75, 0, 0, .5); }
+.transport button.primary:disabled::before, .dock-bay button.primary:disabled::before {
   background: linear-gradient(180deg, #d94c3e 0%, #c03229 18%, #a5241f 88%, #8c1d19 100%);
   box-shadow: 0 var(--side) 0 #631713, inset 0 2px 2px rgba(60, 0, 0, .28);
 }
@@ -410,7 +410,7 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
   background: linear-gradient(180deg, #d94c3e 0%, #c03229 18%, #a5241f 88%, #8c1d19 100%);
   box-shadow: 0 var(--side) 0 #631713, inset 0 2px 2px rgba(60, 0, 0, .28);
 }
-.transport button.primary:active:not(:disabled)::before { background: linear-gradient(180deg, #d94c3e 0%, #c03229 18%, #a5241f 88%, #8c1d19 100%); box-shadow: 0 var(--side) 0 #631713, inset 0 2px 2px rgba(60, 0, 0, .28); }
+.transport button.primary:active:not(:disabled)::before, .dock-bay button.primary:active:not(:disabled)::before { background: linear-gradient(180deg, #d94c3e 0%, #c03229 18%, #a5241f 88%, #8c1d19 100%); box-shadow: 0 var(--side) 0 #631713, inset 0 2px 2px rgba(60, 0, 0, .28); }
 /* ---------- stereo rack (step 2) ---------- */
 .body > .row ~ .rack { margin: 20px 0 6px; }
 .rack {
@@ -572,24 +572,6 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
 }
 .drop b { color: var(--red); font-family: var(--mono); letter-spacing: .15em; text-transform: uppercase; }
 .drop:hover, .drop.over { background: var(--amber); color: var(--ink); }
-.chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
-.chip {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 6px 6px 16px;
-  background: var(--ink);
-  color: var(--bone);
-  border-radius: 5px;
-  font: 13px var(--mono);
-  box-shadow: 0 3px 0 #000;
-}
-/* A little label stripe on the tape's left edge. */
-.chip::before { content: ""; position: absolute; left: 6px; top: 6px; bottom: 6px; width: 3px; background: var(--red); }
-.chip.custom::before { background: var(--amber); }
-.chip small { color: #9a9383; font-size: 11px; }
-.chip button.icon { width: 28px; height: 28px; }
 
 /* ---------- sound dock: a cassette-deck door beside the language select ---------- */
 .top-row { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 24px; align-items: end; }
@@ -739,25 +721,52 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
   opacity: 1;
   transition: opacity .25s, visibility 0s;
 }
-.dock .drop { border-color: rgba(235, 229, 214, .35); color: #b9b2a2; background: repeating-linear-gradient(-45deg, transparent 0 14px, rgba(255, 255, 255, .03) 14px 28px); padding: 16px; }
-.dock .drop:hover, .dock .drop.over { background: var(--amber); color: var(--ink); border-color: var(--ink); }
-.dock .chips { margin-top: 12px; }
-.dock .chip { background: #24262b; box-shadow: 0 2px 0 #000, inset 0 1px 0 rgba(255, 255, 255, .08); }
-/* Remove key: same square key, lettering lit red. */
-button.icon.remove { font-size: 16px; color: #ffc2bd; text-shadow: 0 0 3px rgba(255, 120, 110, .95), 0 0 10px rgba(255, 50, 40, .85), 0 0 20px rgba(255, 40, 30, .5); }
-.dock .chip { gap: 6px; }
-/* Standard-size shells: every tape is the same width whatever its name, laid out on a fixed rack grid. */
-.dock .chips { display: grid; grid-template-columns: repeat(auto-fill, 228px); justify-content: start; gap: 10px; }
-.dock .chip { width: 228px; height: 42px; box-sizing: border-box; }
-.chip-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chip small { flex: none; font-variant-numeric: tabular-nums; }
-.dock .restore-tapes { grid-column: 1 / -1; justify-self: start; }
-.restore-tapes { align-self: center; }
+/* Inside the bay: a rack panel with a header strip, a slim drop slot, and a shelf of tapes. */
+.dock-bay { display: grid; gap: 12px; padding: 12px 14px 16px; }
+.bay-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(235, 229, 214, .12); color: var(--bone); }
+.bay-head .door-title { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.bay-head .door-title .tick { margin-right: 0; }
+.bay-count { font: 15px var(--dot); color: var(--lcd); text-shadow: 0 0 6px rgba(255, 138, 61, .6); }
+.bay-keys { display: flex; gap: 8px; margin-left: auto; }
+.dock-bay button { width: auto; min-height: 0; }
+.bay-keys button, .dock-bay .restore-tapes { padding: 9px 16px 13px; }
+.bay-keys button:active:not(:disabled), .bay-keys button:disabled,
+.dock-bay .restore-tapes:active:not(:disabled) { padding: 11px 16px 11px; }
+.dock .drop { padding: 10px 14px; border: 1px dashed rgba(235, 229, 214, .3); border-radius: 4px; background: none; color: #9c968a; font: 12px var(--mono); }
+.dock .drop:hover, .dock .drop.over { background: rgba(255, 178, 0, .1); color: var(--amber); border-color: var(--amber); }
+/* Every tape is the same size: a numbered label strip with a colour band, then its play and eject keys. */
+.tapes { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.tape {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 6px 0 14px;
+  background: linear-gradient(180deg, #202329, #16181c);
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255, 255, 255, .07);
+  font: 13px var(--mono);
+  color: var(--bone);
+}
+.tape::before { content: ""; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 3px; border-radius: 1px; background: var(--red); }
+.tape.custom::before { background: var(--amber); }
+.tape-num { font: 600 10px var(--mono); letter-spacing: .1em; color: #6f6a61; }
+.tape-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tape-len { font-size: 11px; color: #9a9383; font-variant-numeric: tabular-nums; }
+.tape button { width: 36px; height: 38px; padding: 0 0 4px; font-size: 12px; letter-spacing: 0; }
+.tape button:active:not(:disabled) { padding: 2px 0 0; }
+.tape button svg { display: block; width: 12px; height: 12px; margin: 0 auto; fill: currentColor; }
+.tape button.remove { color: #b3261d; }
+.tapes-empty { grid-column: 1 / -1; margin: 4px 0; font: 12px var(--mono); color: #8f887a; }
+.dock-bay .restore-tapes { grid-column: 1 / -1; justify-self: start; }
 /* No hover on touch screens: keep the bay open. */
 @media (hover: none) {
   .dock { height: auto; }
   .dock-door, .dock::before { display: none; }
   .dock-bay { position: static; visibility: visible; opacity: 1; }
+  #dockClose { display: none; }
 }
 
 /* ---------- prompt terminal ----------

@@ -75,9 +75,17 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
               </span>
             </div>
             <div class="dock-bay">
-              <div id="soundDrop" class="drop"><b>Insert tape</b> · drop audio files here or <u>click to upload</u>. Most audio and video formats work, and they're converted to 48 kHz mono MP3. Keep them short.</div>
+              <div class="bay-head">
+                <span class="door-title"><span class="tick">A</span>Your sounds <span class="jp">カセット</span></span>
+                <span id="bayCount" class="bay-count">0 tapes</span>
+                <div class="bay-keys">
+                  <button id="soundAdd" class="primary">+ Add sounds</button>
+                  <button id="dockClose" aria-label="Close your sounds">Close</button>
+                </div>
+              </div>
+              <div id="soundDrop" class="drop">Drop audio or video files here or <u>click to choose</u>. They're converted to 48 kHz mono MP3, so keep them short.</div>
               <input id="soundFile" type="file" accept="audio/*,video/*" multiple hidden />
-              <div id="sounds" class="chips"></div>
+              <div id="sounds" class="tapes"></div>
             </div>
           </div>
         </div>

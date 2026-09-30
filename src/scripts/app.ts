@@ -198,19 +198,24 @@ async function loadSounds() {
   renderSlots();
 }
 
+const PLAY_ICON = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.5v9l7.5-4.5z"/></svg>';
+const EJECT_ICON = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5 11 7H1zM1 8.5h10V10.5H1z"/></svg>';
+
 function renderSounds() {
   const n = state.sounds.length;
-  $("soundCount").textContent = `${n} tape${n === 1 ? "" : "s"}`;
-  $("sounds").replaceChildren(...state.sounds.map((s) => el("span", { className: `chip ${s.kind}`, title: s.name },
-    el("span", { className: "chip-name", textContent: s.name }),
-    el("small", { textContent: `${mp3Seconds(s.size).toFixed(2)}s` }),
-    el("button", { className: "icon", textContent: "▶", title: "Play", onclick: () => play(s.url, { code: "SD", number: state.sounds.indexOf(s) + 1, title: s.name }) }),
-    el("button", { className: "icon remove", textContent: "⏏", title: "Eject tape", onclick: () => void removeSound(s) }),
+  $("soundCount").textContent = $("bayCount").textContent = `${n} tape${n === 1 ? "" : "s"}`;
+  $("sounds").replaceChildren(...state.sounds.map((s, i) => el("div", { className: `tape ${s.kind}`, title: s.name },
+    el("span", { className: "tape-num", textContent: String(i + 1).padStart(2, "0") }),
+    el("span", { className: "tape-name", textContent: s.name }),
+    el("span", { className: "tape-len", textContent: `${mp3Seconds(s.size).toFixed(2)}s` }),
+    el("button", { innerHTML: PLAY_ICON, ariaLabel: `Play ${s.name}`, onclick: () => play(s.url, { code: "SD", number: i + 1, title: s.name }) }),
+    el("button", { className: "remove", innerHTML: EJECT_ICON, ariaLabel: `Remove ${s.name}`, onclick: () => void removeSound(s) }),
   )));
+  if (!n) $("sounds").append(el("p", { className: "tapes-empty", textContent: "No tapes yet. Add some sounds to use them in your prompts." }));
   const hidden = state.hiddenLibrary.length;
   if (hidden) {
     $("sounds").append(el("button", {
-      className: "small restore-tapes",
+      className: "restore-tapes",
       textContent: `Restore ${hidden} library tape${hidden === 1 ? "" : "s"}`,
       onclick: () => { state.hiddenLibrary = []; save(); void loadSounds(); },
     }));
@@ -236,6 +241,8 @@ async function removeSound(s: Sound) {
 async function uploadSounds(files: File[]) {
   const dock = $("dock");
   dock.classList.add("hold"); // keep the bay open while converting
+  const add = $<HTMLButtonElement>("soundAdd");
+  add.disabled = true;
   const zone = $("soundDrop");
   const original = zone.innerHTML;
   const taken = new Set(state.sounds.map((s) => s.name));
@@ -254,6 +261,7 @@ async function uploadSounds(files: File[]) {
   }
   zone.innerHTML = original;
   await loadSounds();
+  add.disabled = false;
   dock.classList.remove("hold");
 }
 
@@ -594,6 +602,8 @@ dropZone($("soundDrop"), $<HTMLInputElement>("soundFile"), (f) => void uploadSou
   const dock = $("dock");
   const door = dock.querySelector<HTMLElement>(".dock-door")!;
   door.addEventListener("click", () => dock.classList.add("open"));
+  $("soundAdd").onclick = () => $("soundFile").click();
+  $("dockClose").onclick = () => { dock.classList.remove("open"); dock.focus(); };
   dock.addEventListener("keydown", (e) => {
     if (e.target !== dock) return;
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); dock.classList.toggle("open"); }
