@@ -1,0 +1,53 @@
+<!doctype html>
+<!-- Link preview card (WhatsApp, Discord, X...). Regenerate public/og-image.png with: npm run og -->
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face { font-family: "Archivo"; src: url("../node_modules/@fontsource-variable/archivo/files/archivo-latin-wdth-normal.woff2") format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; }
+  @font-face { font-family: "Plex"; src: url("../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); font-weight: 400; }
+  @font-face { font-family: "Plex"; src: url("../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2"); font-weight: 600; }
+  html, body { margin: 0; }
+  body {
+    width: 1200px; height: 630px; overflow: hidden; position: relative;
+    color: #d4d8d0; font-family: "Archivo", sans-serif;
+    background: radial-gradient(circle at 1px 1px, rgba(212, 216, 208, .07) 1px, transparent 1.5px) 0 0 / 22px 22px, #0a0b0c;
+  }
+  .unit {
+    position: absolute; inset: 40px; border: 1px solid #24272c; border-radius: 18px; background: #141518;
+    padding: 64px 72px; display: flex; flex-direction: column; justify-content: center; gap: 28px;
+  }
+  .brand { display: flex; align-items: center; gap: 22px; }
+  .mark { width: 72px; height: 72px; fill: #d4d8d0; }
+  .kicker { font: 600 20px/1 "Plex", monospace; letter-spacing: .16em; text-transform: uppercase; color: #8b9189; margin-bottom: 12px; }
+  h1 { margin: 0; font-weight: 800; font-stretch: 125%; text-transform: uppercase; letter-spacing: .04em; font-size: 64px; line-height: 1; }
+  p { margin: 0; max-width: 620px; font-size: 30px; line-height: 1.35; color: #8b9189; }
+  .lcd {
+    align-self: flex-start; padding: 14px 22px; border-radius: 8px; background: #0e0f12; border: 1px solid #24272c;
+    font: 600 22px/1 "Plex", monospace; letter-spacing: .12em; color: #8ef58a; text-shadow: 0 0 10px rgba(142, 245, 138, .5);
+  }
+  .phones { position: absolute; right: 70px; top: 50%; height: 470px; transform: translateY(-50%) rotate(8deg); filter: drop-shadow(0 20px 40px rgba(0, 0, 0, .6)); }
+</style>
+</head>
+<body>
+  <div class="unit">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 245 245" id="mark"></svg>
+      <div>
+        <div class="kicker">WH-1000XM4 · Voice prompts</div>
+        <h1>XM4 Voice<br />Studio</h1>
+      </div>
+    </div>
+    <p>Swap the voice prompts on your Sony <span style="white-space: nowrap">WH-1000XM4</span> for your own sounds.</p>
+    <div class="lcd">▶ RUNS IN YOUR BROWSER</div>
+  </div>
+  <img class="phones" src="../public/xm4-headphones.webp" alt="" />
+  <script>
+    // Same "It's a Sony" dot mark as the masthead (src/pages/index.astro).
+    const radii = [7, 10, 12, 13, 14.5, 15, 15.5];
+    document.getElementById("mark").innerHTML = [6, 5, 5, 6, 7, 7, 6]
+      .flatMap((len, row) => radii.slice(0, len).map((r, col) => `<circle cx="${17.5 + col * 35}" cy="${17.5 + row * 35}" r="${r}"/>`))
+      .join("");
+  </script>
+</body>
+</html>

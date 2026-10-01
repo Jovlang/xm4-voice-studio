@@ -15,7 +15,8 @@
     "preview": "astro preview",
     "test": "npm run test:fota-machine",
     "test:fota-machine": "tsx test/fota-machine.ts",
-    "astro": "astro"
+    "astro": "astro",
+    "og": "chromium --headless --disable-gpu --hide-scrollbars --allow-file-access-from-files --window-size=1200,630 --virtual-time-budget=2000 --screenshot=public/og-image.png \"file://$PWD/scripts/og-card.html\""
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
