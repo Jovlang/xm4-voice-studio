@@ -4,7 +4,7 @@ import { LANG_NAMES, packPath, packUrl, mirrorUrl } from "../lib/manifest";
 import { downloadPack, linkedPackId, shareEnabled, shareLink, uploadPack, type SharedPack } from "../lib/share";
 import * as store from "../lib/store";
 import { buildPack, IMAGE_SIZE, imageOverhead, isVoicePack, loadPack, SLOT_LABELS, type VoicePack } from "../lib/voicepack";
-import { Xm4DirectUpdater } from "../lib/xm4-fota";
+import { CommitUnconfirmedError, Xm4DirectUpdater, type InstallOptions } from "../lib/xm4-fota";
 import { Xm4Transport } from "../lib/xm4-transport";
 import { StereoEq } from "./eq";
 import { stepScroll } from "./step-scroll";
@@ -34,6 +34,13 @@ const state = {
   over: false,
   sonyLoading: true, // until the first loadSourcePack() finishes
 };
+/**
+ * ?demo: Install runs a pretend install that touches no headphones, to try the progress readout and the popout.
+ * ?demo=unverified ends as if the headphones never confirmed; ?demo=fail stops halfway.
+ */
+const demo = new URLSearchParams(location.search).get("demo");
+/** Language code every custom pack is labelled with (see ensureBuilt). */
+const INSTALL_AS = "04";
 const packCache = new Map<string, VoicePack>();
 const bt = { transport: new Xm4Transport(), busy: false };
 // Kept in the document: Chrome can abort play() on a detached element ("media was removed from the document").
@@ -89,9 +96,16 @@ async function play(url: string, track: Track) {
   } catch (e) {
     if (request !== playRequest || (e as DOMException).name === "AbortError") return;
     console.error("playback failed", url, e);
-    alert(`Couldn't play this sound: ${(e as Error).message}`);
+    $("vfdText").textContent = `Couldn't play this sound: ${(e as Error).message}`;
   }
 }
+/** Show messages under a drop zone, or hide it when there are none. */
+function showErrors(id: string, lines: string[]) {
+  const p = $(id);
+  p.textContent = lines.join("\n");
+  p.hidden = !lines.length;
+}
+
 function dropZone(zone: HTMLElement, input: HTMLInputElement, onFiles: (f: File[]) => void) {
   zone.onclick = () => input.click();
   input.onchange = () => { onFiles([...(input.files ?? [])]); input.value = ""; };
@@ -164,6 +178,7 @@ function renderSony() {
 }
 
 async function addSonyFiles(files: File[]) {
+  const errors: string[] = [];
   for (const f of files) {
     const raw = new Uint8Array(await f.arrayBuffer());
     if (isVoicePack(raw)) {
@@ -173,7 +188,7 @@ async function addSonyFiles(files: File[]) {
       try {
         packCache.set(code, loadPack(raw));
       } catch (e) {
-        alert(`${f.name}: couldn't read voice pack (${(e as Error).message})`);
+        errors.push(`${f.name}: couldn't read voice pack (${(e as Error).message})`);
         continue;
       }
       await store.set(`pack:${code}`, raw);
@@ -183,9 +198,10 @@ async function addSonyFiles(files: File[]) {
         save();
       }
     } else {
-      alert(`${f.name} doesn't look like a Sony voice pack`);
+      errors.push(`${f.name} doesn't look like a Sony voice pack`);
     }
   }
+  showErrors("sonyError", errors);
   await loadSourcePack();
 }
 
@@ -261,6 +277,7 @@ async function uploadSounds(files: File[]) {
   const zone = $("soundDrop");
   const original = zone.innerHTML;
   const taken = new Set(state.sounds.map((s) => s.name));
+  const errors: string[] = [];
   for (const f of files) {
     zone.textContent = `Converting ${f.name}…`;
     try {
@@ -271,10 +288,11 @@ async function uploadSounds(files: File[]) {
       taken.add(name);
       await store.set(`sound:${name}`, mp3);
     } catch (e) {
-      alert(`${f.name}: couldn't convert (${(e as Error).message || "unsupported format"})`);
+      errors.push(`${f.name}: couldn't convert (${(e as Error).message || "unsupported format"})`);
     }
   }
   zone.innerHTML = original;
+  showErrors("soundError", errors);
   await loadSounds();
   add.disabled = false;
   dock.classList.remove("hold");
@@ -360,7 +378,10 @@ async function ensureBuilt(): Promise<Uint8Array> {
   if (state.built) return state.built;
   btLog("Building your voice pack…");
   await new Promise((r) => setTimeout(r, 30)); // let the UI paint before the synchronous LZMA pass
-  const pack = state.pack!;
+  // The image's first word is the language code (1 = English … 10 = Turkish). Custom packs labelled
+  // English install but never play, so every custom pack goes on as Spanish, the label known to work.
+  const pack = { ...state.pack!, version: Number(INSTALL_AS) };
+  btLog(`  labelled ${cap(LANG_NAMES[INSTALL_AS])} for the headphones`);
   const slots = [...pack.slots];
   for (const [slot, id] of Object.entries(state.assignments)) {
     const s = state.sounds.find((x) => x.id === id)!;
@@ -527,18 +548,41 @@ function clearBtLog() {
   $("btLog").className = "lcd";
 }
 
-function terminalProgress(fraction: number, remainingMs: number | undefined, phase: "TRANSFER" | "VERIFY" | "COMPLETE" | "FAILED") {
+type TerminalPhase = "TRANSFER" | "VERIFY" | "COMPLETE" | "UNVERIFIED" | "FAILED";
+const baseTitle = document.title;
+let lastProgress: Parameters<typeof terminalProgress> | undefined;
+const measure = document.createElement("canvas").getContext("2d")!;
+
+/** Bar cells that span at least 3/4 of the log's width, leaving room for the percentage and phase. */
+function barCells(): number {
+  const log = $("btLog");
+  const style = getComputedStyle(log);
+  const width = log.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  const font = getComputedStyle($("btTerminalProgress"));
+  measure.font = `${font.fontWeight} ${font.fontSize} ${font.fontFamily}`;
+  const cell = measure.measureText("█").width || 7;
+  const fits = Math.floor(width / cell) - ":: [] 100%  UNVERIFIED".length - 1;
+  return Math.max(8, Math.min(Math.ceil((0.75 * width) / cell), fits));
+}
+
+function terminalProgress(fraction: number, remainingMs: number | undefined, phase: TerminalPhase) {
+  lastProgress = [fraction, remainingMs, phase];
   const progress = $("btTerminalProgress");
   const percentage = Math.floor(100 * Math.max(0, Math.min(1, fraction)));
-  const filled = Math.round(percentage * 16 / 100);
+  const cells = barCells();
+  const filled = Math.round((percentage * cells) / 100);
   const seconds = remainingMs === undefined ? undefined : Math.ceil(remainingMs / 1000);
   const eta = seconds === undefined ? "--:--" : `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-  const suffix = phase === "TRANSFER" ? `ETA ${eta}` : phase === "VERIFY" ? "VERIFYING" : phase === "COMPLETE" ? "DONE" : "FAILED";
-  progress.textContent = `:: [${"█".repeat(filled)}${"░".repeat(16 - filled)}] ${String(percentage).padStart(3)}%  ${suffix}`;
+  const suffix = phase === "TRANSFER" ? `ETA ${eta}` : phase === "VERIFY" ? "VERIFYING" : phase === "COMPLETE" ? "DONE" : phase;
+  progress.textContent = `:: [${"█".repeat(filled)}${"░".repeat(cells - filled)}] ${String(percentage).padStart(3)}%  ${suffix}`;
   progress.setAttribute("aria-valuenow", String(percentage));
+  document.title = `${phase === "TRANSFER" ? `${percentage}%` : phase === "VERIFY" ? "Verifying" : phase === "COMPLETE" ? "✓ Installed" :
+    phase === "UNVERIFIED" ? "? Unverified" : "✗ Failed"} · ${baseTitle}`;
   progress.hidden = false;
   $("btLog").scrollTop = $("btLog").scrollHeight;
 }
+// Resize the bar with the log.
+new ResizeObserver(() => { if (lastProgress && !$("btTerminalProgress").hidden) terminalProgress(...lastProgress); }).observe($("btLog"));
 
 function renderBluetooth() {
   const supported = "serial" in navigator;
@@ -550,7 +594,7 @@ function renderBluetooth() {
   $<HTMLButtonElement>("btRace").disabled = !supported || bt.busy || !!race;
   const canRun = ready && !!state.pack && !state.over;
   const canReturnToStepOne = state.over && !bt.busy;
-  $<HTMLButtonElement>("btInstall").disabled = !canRun && !canReturnToStepOne;
+  $<HTMLButtonElement>("btInstall").disabled = demo === null ? !canRun && !canReturnToStepOne : bt.busy;
   $<HTMLButtonElement>("btCheck").disabled = !canRun && !canReturnToStepOne;
   $<HTMLButtonElement>("btRestore").disabled = !ready || !state.pack;
   $("btMdr").classList.toggle("on", !!mdr);
@@ -560,7 +604,7 @@ function renderBluetooth() {
   for (const buttonId of ["btMdr", "btRace", "btCheck", "btInstall"]) {
     const button = $<HTMLButtonElement>(buttonId);
     if (["off", "on"].includes(button.parentElement!.dataset.status!)) {
-      const channelAction = buttonId === "btCheck" || buttonId === "btInstall";
+      const channelAction = buttonId === "btCheck" || (buttonId === "btInstall" && demo === null);
       setTransportStatus(buttonId, button.disabled || (channelAction && !channelsReady) ? "off" : "on");
     }
   }
@@ -623,8 +667,6 @@ async function checkBluetooth() {
   }
 }
 
-const minutes = (ms: number) => Math.max(1, Math.round(ms / 60000));
-
 async function installBuilt() {
   if (bt.busy || showCapacityIfOver()) return;
   setTransportStatus("btInstall", "progress");
@@ -642,11 +684,13 @@ async function installBuilt() {
     bt.busy = false;
     renderBluetooth();
   }
-  await installBluetooth(bin, "your voice pack", false);
+  await installBluetooth(bin, "your voice pack", { clearLog: false, thanks: true });
 }
 
-async function installBluetooth(bin: Uint8Array, what: string, clearLog = true) {
-  if (!confirm(`Install ${what} on your headphones now?\n\nIt takes about 15 minutes. Keep the headphones on and near this computer. ` +
+type Installer = (bin: Uint8Array, options: InstallOptions) => Promise<void>;
+
+async function installBluetooth(bin: Uint8Array, what: string, { clearLog = true, thanks = false, ask = true, run = ((b, o) => Xm4DirectUpdater.fromTransport(bt.transport).install(b, o)) as Installer } = {}) {
+  if (ask && !confirm(`Install ${what} on your headphones now?\n\nIt takes about 15 minutes. Keep the headphones on and near this computer. ` +
       "At the end they switch off to install it; then turn them back on.")) {
     setTransportStatus("btInstall", "on");
     return;
@@ -655,45 +699,37 @@ async function installBluetooth(bin: Uint8Array, what: string, clearLog = true) 
   bt.busy = true;
   renderBluetooth();
   if (clearLog) clearBtLog();
-  const deck = $("btProgress");
-  deck.hidden = false;
-  deck.classList.add("running");
-  const setFraction = (f: number) => {
-    deck.style.setProperty("--p", String(f));
-    $("btBar").style.setProperty("--level", `${(100 * f).toFixed(1)}%`);
-  };
-  const status = $("btStatus");
-  setFraction(0);
   terminalProgress(0, undefined, "TRANSFER");
-  status.textContent = "Starting…";
   let started = 0;
   let done = false;
   let fraction = 0;
   try {
-    await Xm4DirectUpdater.fromTransport(bt.transport).install(bin, {
+    await run(bin, {
       progress: (m) => btLog(m),
       onFraction: (f) => {
         started ||= performance.now();
         fraction = f;
-        setFraction(f);
         const remainingMs = f > 0.02 && f < 1 ? ((performance.now() - started) * (1 - f)) / f : undefined;
-        const left = remainingMs === undefined ? "" : ` · about ${minutes(remainingMs)} min left`;
-        status.textContent = `Transferring ${Math.floor(100 * f)}%${left}`;
         terminalProgress(f, remainingMs, f >= 1 ? "VERIFY" : "TRANSFER");
       },
     });
     done = true;
     terminalProgress(1, undefined, "COMPLETE");
     setTransportStatus("btInstall", "success");
-    status.textContent = "Installing on the headphones…";
     btLog("✓ Sent and verified. The headphones are installing it and will switch off: when the light stops blinking, turn them on.", "ok");
   } catch (e) {
-    terminalProgress(fraction, undefined, "FAILED");
-    setTransportStatus("btInstall", "failed");
-    status.textContent = "Stopped. Your current prompts are unchanged.";
-    btLog(`✗ ${(e as Error).message}`, "err");
+    if (e instanceof CommitUnconfirmedError) {
+      // Sent and verified, but the headphones never dropped the link to install it: it may well have worked.
+      done = true;
+      terminalProgress(1, undefined, "UNVERIFIED");
+      setTransportStatus("btInstall", "on");
+      btLog(`? ${e.message}`);
+    } else {
+      terminalProgress(fraction, undefined, "FAILED");
+      setTransportStatus("btInstall", "failed");
+      btLog(`✗ ${(e as Error).message} Your current prompts are unchanged.`, "err");
+    }
   } finally {
-    deck.classList.remove("running");
     // After a commit the headphones drop both channels; reconnect from scratch next time.
     if (done) {
       await bt.transport.close();
@@ -704,6 +740,31 @@ async function installBluetooth(bin: Uint8Array, what: string, clearLog = true) 
     bt.busy = false;
     renderBluetooth();
   }
+  if (done && thanks) $<HTMLDialogElement>("kofi").showModal();
+}
+
+async function demoInstall() {
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  await installBluetooth(new Uint8Array(), "a test install (nothing is sent)", {
+    thanks: true,
+    ask: false,
+    run: async (_, { progress = () => {}, onFraction }) => {
+      progress("Test install: no headphones are involved.");
+      await wait(600);
+      progress("Erasing and writing (pretend)…");
+      for (let i = 1; i <= 100; i++) {
+        await wait(80);
+        onFraction?.(i / 100);
+        if (demo === "fail" && i === 50) throw new Error("Test install stopped halfway on purpose.");
+      }
+      progress("Asking the headphones to verify the written pack…");
+      await wait(1500);
+      progress("Installing: the headphones will restart. Do not turn them off.");
+      await wait(2000);
+      if (demo === "unverified") throw new CommitUnconfirmedError("Headphones accepted the install command but did not restart within 45 s. Power-cycle them and check the voice guidance.");
+      progress("Headphones disconnected to install the pack. Wait for them to restart.");
+    },
+  });
 }
 
 async function restoreStock() {
@@ -745,7 +806,7 @@ addEventListener("hashchange", () => void importLinkedPack().then(loadSourcePack
 $("btMdr").onclick = () => void connectBluetooth("mdr");
 $("btRace").onclick = () => void connectBluetooth("race");
 $("btCheck").onclick = () => void checkBluetooth();
-$("btInstall").onclick = () => void installBuilt();
+$("btInstall").onclick = () => void (demo === null ? installBuilt() : demoInstall());
 $("btRestore").onclick = () => void restoreStock();
 dropZone($("sonyDrop"), $<HTMLInputElement>("sonyFile"), (f) => void addSonyFiles(f));
 dropZone($("soundDrop"), $<HTMLInputElement>("soundFile"), (f) => void uploadSounds(f));

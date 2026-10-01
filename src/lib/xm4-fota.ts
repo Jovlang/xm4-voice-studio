@@ -72,11 +72,14 @@ const RESPONSE_TIMEOUT_MS = 9000; // stage.a f21466r
 const MAX_RETRIES = 3; // o6.a.j()
 const FOREGROUND_WINDOW = 4; // u6.b prePollSize
 const BACKGROUND_WINDOW = 3; // s6.c.T0() j0(3)
-const COMMIT_WAIT_MS = 15000;
+const COMMIT_WAIT_MS = 45000;
 const BATTERY_CHECK_MS = 30000;
 export const MIN_BATTERY_PERCENT = 50;
 
 export type Progress = (message: string) => void;
+
+/** The headphones took the install command but never dropped the link, so we can't tell whether it installed. */
+export class CommitUnconfirmedError extends Error {}
 
 export interface VoicePackCheck {
   bytes: number;
@@ -402,7 +405,7 @@ export class Xm4DirectUpdater {
     progress(`Pack verified: ${pack.bytes} bytes, ${pack.slots} slots, SHA-256 ${pack.sha256.slice(0, 16)}…`);
 
     await this.drain();
-    await this.readVoiceStatus();
+    await this.readVoiceStatus(progress);
     const method = await this.readUpdateMethod();
     progress(`Headphones update method 0x${method.code.toString(16)} (${method.background ? "background" : "foreground"}, ` +
       `start ≥ ${method.startBattery}%, stop ≤ ${method.interruptBattery}%).`);
@@ -490,15 +493,17 @@ export class Xm4DirectUpdater {
     }
     // s6.b.g: commit without a disconnect is reported as COMMIT_FAIL.
     this.committed = false;
-    throw new Error("Headphones accepted the install command but did not restart within 15 s. Power-cycle them and check the voice guidance.");
+    throw new CommitUnconfirmedError(`Headphones accepted the install command but did not restart within ${COMMIT_WAIT_MS / 1000} s. Power-cycle them and check the voice guidance.`);
   }
 
-  private async readVoiceStatus(): Promise<void> {
+  private async readVoiceStatus(progress: Progress): Promise<void> {
     // The first status inquiry after an RFCOMM connection may not be answered.
     for (let attempt = 0; attempt < 2; attempt++) {
       await this.mdr.send(MDR.getVoiceStatus);
       try {
-        await readMdrMatching(this.mdr, (frame) => samePrefix(frame.payload, MDR.voiceStatus), 2500);
+        const frame = await readMdrMatching(this.mdr, (f) => samePrefix(f.payload, MDR.voiceStatus), 2500);
+        // Logged raw while we work out whether it carries the installed language.
+        progress(`Voice-guidance status: ${[...frame.payload].map((b) => b.toString(16).padStart(2, "0")).join(" ")}.`);
         return;
       } catch { /* retry once, matching Sony's own connection behavior */ }
     }

@@ -36,6 +36,7 @@ a { color: var(--crt); text-underline-offset: 3px; }
 b { font-weight: 700; color: #f0f2ec; }
 .ok { color: var(--crt); }
 .err { color: var(--red); }
+#soundError, #sonyError { margin: 0; white-space: pre-line; font: 12px var(--mono); }
 .muted { color: var(--dim); }
 
 /* ---------- shared type ---------- */
@@ -155,6 +156,7 @@ button svg { display: block; width: 12px; height: 12px; margin: 0 auto; fill: cu
 
 .transport { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 16px; }
 .transport button { width: 100%; min-height: 54px; }
+.transport-control[hidden] { display: none; }
 /* Install is the one red key: it writes to the headphones. */
 #btInstall, #btInstall:not(:disabled) {
   color: #fff1ec;
@@ -501,6 +503,7 @@ code { font: 13px var(--mono); background: var(--bezel); color: var(--text); pad
 /* The lamp blinks only while a sound is playing. */
 .rack:has(.stereo.active) .rack-led { animation: blink .8s steps(1) infinite; }
 @keyframes blink { 50% { opacity: .25; box-shadow: none; } }
+@keyframes spin { to { transform: rotate(-360deg); } }
 .vfd {
   flex: 1 1 0;
   min-width: 0;
@@ -773,7 +776,7 @@ pre.lcd {
 }
 .terminal-status { display: block; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(255, 181, 74, .25); }
 #btLogLines { display: block; }
-.terminal-progress { display: block; font: 600 11px/1.7 var(--mono); white-space: pre; }
+.terminal-progress { display: block; font: 600 11px/1.7 var(--mono); white-space: pre; overflow: hidden; }
 .terminal-progress[hidden] { display: none; }
 
 /* Segmented meter: dim segments behind, lit segments clipped to --level. */
@@ -801,36 +804,42 @@ pre.lcd {
 }
 .meter.over > div { background: var(--red); }
 
-.deck {
-  display: grid;
-  grid-template-columns: minmax(240px, 360px) 1fr;
-  gap: 24px;
-  align-items: center;
-  padding: 20px;
-  --p: 0;
+
+/* Thank-you popout after an install: the share popout's green screen, floating over the page. */
+.kofi {
+  width: min(460px, calc(100% - 32px));
+  padding: 22px 24px 20px;
+  color: var(--crt);
+  font: 14px/1.5 var(--dot);
+  text-shadow: 0 0 6px rgba(142, 245, 138, .45);
+  background: radial-gradient(120% 140% at 50% 40%, #0f2418 0%, #08140d 70%, #040a06 100%);
+  border: 4px solid var(--crt-line);
+  box-shadow: 0 0 0 4px #040a06, 0 0 28px rgba(142, 245, 138, .25), 0 18px 60px rgba(0, 0, 0, .8);
 }
-.deck[hidden] { display: none; }
-.cassette { width: 100%; height: auto; display: block; }
-.cassette .shell { fill: #1c1e22; stroke: #000; stroke-width: 3; }
-.cassette .sticker { fill: #2a2d33; }
-.cassette .stripe.s1 { fill: var(--crt); }
-.cassette .stripe.s2 { fill: rgba(142, 245, 138, .55); }
-.cassette .stripe.s3 { fill: rgba(142, 245, 138, .25); }
-.cassette .sticker-text { font: 600 11px var(--mono); letter-spacing: .12em; fill: var(--text); }
-.cassette .window { fill: #08090a; stroke: #000; stroke-width: 2; }
-.cassette .pack { fill: #2e2a26; transform-box: fill-box; transform-origin: center; transition: transform .4s; }
-/* Tape moves from the supply reel (left) to the take-up reel (right) as --p goes 0 → 1. */
-.cassette .pack.left { transform: scale(calc(.4 + .6 * (1 - var(--p)))); }
-.cassette .pack.right { transform: scale(calc(.4 + .6 * var(--p))); }
-.cassette .reel { transform-box: fill-box; transform-origin: center; }
-.cassette .reel circle { fill: var(--text); stroke: #000; stroke-width: 2; }
-.cassette .reel path { stroke: #000; stroke-width: 4; stroke-linecap: round; }
-.deck.running .reel { animation: spin 1.4s linear infinite; }
-@keyframes spin { to { transform: rotate(-360deg); } }
-.cassette .bottom { fill: #141518; stroke: #000; stroke-width: 2; }
-.cassette .hole { fill: var(--void); }
-.deck-side { display: grid; gap: 10px; }
-.lcd.counter { margin: 0; padding: 12px 14px; font-size: 18px; min-height: 52px; }
+.kofi::backdrop { background: rgba(0, 0, 0, .65); }
+.kofi p { margin: 0 0 14px; }
+.kofi-title { font-size: 22px; color: var(--crt-hot); }
+.kofi .heart { color: var(--red); text-shadow: 0 0 10px rgba(255, 75, 64, .7); }
+.kofi-keys { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.kofi-keys a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font: 600 11px/1.2 var(--mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #fff1ec;
+  text-shadow: 0 1px 1px rgba(70, 0, 0, .6);
+  background: linear-gradient(180deg, #e2483a, #b3261e);
+  border: 1px solid #000;
+  border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 210, 200, .45), 0 2px 0 #4a0d09;
+}
+.kofi-keys a:hover { background: linear-gradient(180deg, #ec5547, #c12d24); }
+.kofi-keys a:focus-visible { outline: 2px solid var(--crt); outline-offset: 2px; }
+.kofi-keys svg { width: 14px; height: 14px; fill: currentColor; }
 
 /* ---------- troubleshooting ---------- */
 details { border-top: 1px solid var(--line); padding-top: 14px; }
@@ -858,7 +867,7 @@ dd button { margin: 4px 4px 4px 0; }
   .unit-head { padding: 14px 16px; }
   .unit-body { padding: 16px; }
   .hint { text-align: left; }
-  .columns, .deck { grid-template-columns: 1fr; }
+  .columns { grid-template-columns: 1fr; }
   .transport { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stereo { grid-template-columns: 1fr; --dot: 5px; }
   .seg { order: -1; }
@@ -904,7 +913,7 @@ dd button { margin: 4px 4px 4px 0; }
   .terminal-progress { font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .deck.running .reel, .rack-led, .vfd-disc, .screen td.processing::after { animation: none !important; }
+  .rack-led, .vfd-disc, .screen td.processing::after { animation: none !important; }
   .transport-led { animation: none !important; transition: none !important; }
   .dock-door, .dock-bay { transition: none !important; }
 }

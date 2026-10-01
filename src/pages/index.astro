@@ -85,6 +85,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
               </div>
             </div>
             <div id="soundDrop" class="drop">Drop audio or video files here or <u>click to choose</u>. They're converted to 48 kHz mono MP3 and silence at the start and end is cut, so keep them short.</div>
+            <p id="soundError" class="err" hidden></p>
             <input id="soundFile" type="file" accept="audio/*,video/*" multiple hidden />
             <div id="sounds" class="tapes"></div>
           </div>
@@ -96,6 +97,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
             <li>Voice pack: <a id="packLink" target="_blank" rel="noopener"></a></li>
           </ul>
           <div id="sonyDrop" class="drop">Drop the downloaded <code>.bin</code> here or <u>click to choose</u></div>
+          <p id="sonyError" class="err" hidden></p>
           <input id="sonyFile" type="file" multiple hidden />
         </div>
         <div class="bezel rack">
@@ -164,13 +166,15 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
         <h2><span class="num">02</span>Install on headphones</h2>
       </div>
       <div class="unit-body">
-        <p id="btUnsupported" class="err" hidden>This browser can't open Bluetooth serial connections. Use current desktop Chrome or Edge.</p>
+        <p id="btUnsupported" class="err" hidden>This browser can't open Bluetooth serial connections. Use a current desktop Chromium browser such as Chrome or Edge (<a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API#browser_compatibility" target="_blank" rel="noopener">supported browsers</a>).</p>
         <div class="columns">
           <div>
             <h3>Before you start</h3>
             <ul class="checks">
+              <li>A desktop <b>Chromium</b> browser such as Chrome or Edge, or another one with Bluetooth serial support (<a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API#browser_compatibility" target="_blank" rel="noopener">supported browsers</a>). Firefox and Safari can't do it.</li>
               <li>Headphones paired with <b>this computer</b> in its Bluetooth settings, and disconnected from your phone.</li>
               <li>Battery at least 50%. It stops on its own below that.</li>
+              <li>In the Sony <b>Headphones Connect</b> app, set <b>Automatic Power Off</b> to <b>Do not turn off</b>, so they don't switch off mid-install.</li>
             </ul>
           </div>
           <div>
@@ -189,32 +193,6 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
             <div class="transport-control" data-status="off"><button id="btRace" class="key">Update channel</button><span class="transport-led" aria-hidden="true"></span></div>
             <div class="transport-control" data-status="off"><button id="btCheck" class="key" aria-label="Check without installing" disabled>Check</button><span class="transport-led" aria-hidden="true"></span></div>
             <div class="transport-control" data-status="off"><button id="btInstall" class="key primary" aria-label="Install on headphones" disabled>Install</button><span class="transport-led" aria-hidden="true"></span></div>
-          </div>
-        </div>
-        <div id="btProgress" class="bezel deck" hidden>
-          <svg class="cassette" viewBox="0 0 360 228" role="img" aria-label="Transfer progress">
-            <rect class="shell" x="4" y="4" width="352" height="220" rx="14" />
-            <rect class="sticker" x="22" y="20" width="316" height="130" rx="6" />
-            <rect class="stripe s1" x="22" y="40" width="316" height="7" />
-            <rect class="stripe s2" x="22" y="47" width="316" height="7" />
-            <rect class="stripe s3" x="22" y="54" width="316" height="7" />
-            <text class="sticker-text" x="34" y="33">XM4 VOICE STUDIO · SIDE A</text>
-            <rect class="window" x="92" y="74" width="176" height="64" rx="32" />
-            <clipPath id="tapeWindow"><rect x="92" y="74" width="176" height="64" rx="32" /></clipPath>
-            <g clip-path="url(#tapeWindow)">
-              <circle class="pack left" cx="124" cy="106" r="46" />
-              <circle class="pack right" cx="236" cy="106" r="46" />
-            </g>
-            <g transform="translate(124 106)"><g class="reel"><circle r="17" /><path d="M0-17V-8M14.7 8.5 7 4M-14.7 8.5-7 4" /></g></g>
-            <g transform="translate(236 106)"><g class="reel"><circle r="17" /><path d="M0-17V-8M14.7 8.5 7 4M-14.7 8.5-7 4" /></g></g>
-            <path class="bottom" d="M70 224l14-52h192l14 52" />
-            <circle class="hole" cx="118" cy="200" r="7" />
-            <circle class="hole" cx="242" cy="200" r="7" />
-          </svg>
-          <div class="deck-side">
-            <p class="label">Tape counter</p>
-            <p id="btStatus" class="lcd counter"></p>
-            <div id="btBar" class="meter"><div></div></div>
           </div>
         </div>
         <div class="bezel log"><pre id="btLog" class="lcd"><span id="btConnectionStatus" class="terminal-status" aria-live="polite"></span><span id="btLogLines"></span><span id="btTerminalProgress" class="terminal-progress" role="progressbar" aria-label="Voice pack transfer" aria-valuemin="0" aria-valuemax="100" hidden></span></pre></div>
@@ -243,6 +221,14 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
       ))}
     </nav>
   </footer>
+  <dialog id="kofi" class="kofi" aria-labelledby="kofiTitle">
+    <p id="kofiTitle" class="kofi-title">Made with <span class="heart" aria-label="love">♥</span></p>
+    <p>XM4 Voice Studio is free and runs entirely in your browser. If it made your headphones sound like yours, you can support it on Ko-fi.</p>
+    <form method="dialog" class="kofi-keys">
+      <a class="key primary" href="https://ko-fi.com/sadsarches" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d={siKofi.path} /></svg>Support me on Ko-fi</a>
+      <button class="key">Close</button>
+    </form>
+  </dialog>
   <audio id="preview" preload="none" hidden></audio>
   <script src="../scripts/app.ts"></script>
 </body>
