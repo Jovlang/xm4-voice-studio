@@ -155,6 +155,20 @@ button svg { display: block; width: 12px; height: 12px; margin: 0 auto; fill: cu
 
 .transport { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 16px; }
 .transport button { width: 100%; min-height: 54px; }
+/* Install is the one red key: it writes to the headphones. */
+#btInstall, #btInstall:not(:disabled) {
+  color: #fff1ec;
+  text-shadow: 0 1px 1px rgba(70, 0, 0, .6);
+  background: linear-gradient(180deg, #e2483a, #b3261e);
+  border-color: #000;
+  box-shadow: inset 0 1px 0 rgba(255, 210, 200, .45), 0 2px 0 #4a0d09;
+}
+#btInstall:hover:not(:disabled) { background: linear-gradient(180deg, #ec5547, #c12d24); }
+#btInstall:active:not(:disabled), .transport-control[data-status="progress"] #btInstall {
+  background: linear-gradient(180deg, #a8231c, #c4342a);
+  box-shadow: inset 0 2px 4px rgba(60, 0, 0, .7);
+}
+#btInstall:disabled { color: rgba(255, 220, 210, .45); text-shadow: none; background: linear-gradient(180deg, #5a1d19, #431512); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
 .transport-led {
   display: block;
   height: 4px;
@@ -164,7 +178,7 @@ button svg { display: block; width: 12px; height: 12px; margin: 0 auto; fill: cu
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, .9);
   transition: background-color .35s ease, box-shadow .35s ease, opacity .35s ease;
 }
-.transport-control[data-status="on"] .transport-led { background: rgba(142, 245, 138, .45); }
+.transport-control[data-status="on"] .transport-led { background: rgba(244, 163, 46, .55); box-shadow: 0 0 6px rgba(244, 163, 46, .35); }
 .transport-control[data-status="progress"] .transport-led {
   background: var(--amber);
   box-shadow: 0 0 8px rgba(244, 163, 46, .8);
@@ -702,18 +716,18 @@ ul.checks li, ol.steps li { margin: 6px 0; }
 ol.steps li::marker { font: 600 12px var(--mono); color: var(--crt); }
 ul.checks li::marker { content: "■  "; color: var(--crt); font-size: 9px; }
 
-/* Green phosphor readouts, the same glass as the prompt screen. */
-.lcd {
+/* Amber phosphor readouts. The colour never changes with the message: a success or error
+   line reads in the same amber as the rest of the log. */
+.lcd, .lcd.ok, .lcd.err {
   font-family: var(--dot);
-  color: var(--crt);
-  text-shadow: 0 0 6px rgba(142, 245, 138, .45);
+  color: #ffb54a;
+  text-shadow: 0 0 6px rgba(255, 170, 60, .5);
   background:
     repeating-linear-gradient(0deg, rgba(0, 0, 0, .28) 0 1px, transparent 1px 3px),
-    radial-gradient(120% 140% at 50% 40%, #0f2418 0%, #08140d 60%, #040a06 100%);
+    radial-gradient(120% 140% at 50% 40%, #241706 0%, #150d04 60%, #0a0602 100%);
   border-radius: 6px;
   box-shadow: inset 0 0 0 1px #000, inset 0 0 30px rgba(0, 0, 0, .8);
 }
-.lcd.err { color: var(--lcd-err); text-shadow: 0 0 6px rgba(255, 90, 82, .6); }
 .log { padding: 14px; }
 pre.lcd {
   margin: 0;
@@ -724,7 +738,7 @@ pre.lcd {
   font-size: 13px;
   line-height: 1.6;
 }
-.terminal-status { display: block; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(142, 245, 138, .25); }
+.terminal-status { display: block; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(255, 181, 74, .25); }
 #btLogLines { display: block; }
 .terminal-progress { display: block; font: 600 11px/1.7 var(--mono); white-space: pre; }
 .terminal-progress[hidden] { display: none; }
