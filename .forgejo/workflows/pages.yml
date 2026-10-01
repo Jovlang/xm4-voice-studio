@@ -20,6 +20,9 @@ jobs:
       - run: npm run build
         env:
           SITE_BASE: /xm4-voice-studio/
+          # Pack sharing (Supabase Storage). The publishable key is meant to be public.
+          PUBLIC_SUPABASE_URL: https://cfipbavbxamdildppmnt.supabase.co
+          PUBLIC_SUPABASE_ANON_KEY: sb_publishable_mXIXAbFaH4Oc1MQ2kRz2yQ_1Bm7FJCh
       - uses: https://codeberg.org/git-pages/action@v2
         with:
           site: https://${{ forge.repository_owner }}.codeberg.page/xm4-voice-studio/

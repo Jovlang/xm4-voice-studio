@@ -1,6 +1,7 @@
 import { mp3Seconds, toSlotMp3 } from "../lib/audio";
 import { asset } from "../lib/base";
 import { LANG_NAMES, packPath, packUrl, mirrorUrl } from "../lib/manifest";
+import { downloadPack, linkedPackId, shareEnabled, shareLink, uploadPack, type SharedPack } from "../lib/share";
 import * as store from "../lib/store";
 import { buildPack, IMAGE_SIZE, imageOverhead, isVoicePack, loadPack, SLOT_LABELS, type VoicePack } from "../lib/voicepack";
 import { Xm4DirectUpdater } from "../lib/xm4-fota";
@@ -43,6 +44,7 @@ function save() {
   const { source, assignments, showAll, hiddenLibrary } = state;
   localStorage.setItem("xm4", JSON.stringify({ source, assignments, showAll, hiddenLibrary }));
 }
+const errMsg = (e: unknown) => (e as Error).message;
 const kb = (n: number) => (n / 1024).toFixed(1) + " KB";
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Record<string, unknown> = {}, ...kids: (Node | string | null)[]): HTMLElementTagNameMap[K] {
@@ -300,6 +302,7 @@ function renderCapacity() {
   $("cap").className = "meter" + (over ? " over" : "");
   $("cap").style.setProperty("--level", Math.min(100, (100 * used) / IMAGE_SIZE) + "%");
   eq.storage(used / IMAGE_SIZE, over);
+  renderShare();
   $("capText").innerHTML = pack
     ? `Storage: <b>${kb(used)} / ${kb(IMAGE_SIZE)}</b>` + (over ? ' <span class="err">too big, use shorter sounds</span>' : "")
     : "";
@@ -367,6 +370,92 @@ async function ensureBuilt(): Promise<Uint8Array> {
   state.built = buildPack(pack, slots);
   btLog(`Built ${state.built.length.toLocaleString()} bytes.`);
   return state.built;
+}
+
+// ---------- sharing ----------
+
+const shareKey = () => JSON.stringify([state.source, state.assignments]);
+/** The choices the link in the share box points to; the box hides once they change. */
+let sharedKey = "";
+
+function renderShare() {
+  $<HTMLButtonElement>("share").disabled = !Object.keys(state.assignments).length;
+  $("shareBox").hidden = sharedKey !== shareKey();
+}
+
+/** Upload your prompt choices (and the tapes of yours they use) and show a link that opens them. */
+async function sharePack() {
+  const ids = [...new Set(Object.values(state.assignments))];
+  const custom = state.sounds.filter((s) => s.kind === "custom" && ids.includes(s.id));
+  const what = custom.length ? `your ${custom.length} sound${custom.length === 1 ? "" : "s"} and prompt choices` : "your prompt choices";
+  if (!confirm(`Upload ${what} to get a share link?\n\nAnyone with the link can download them.`)) return;
+  const button = $<HTMLButtonElement>("share");
+  button.disabled = true;
+  button.textContent = "Uploading…";
+  try {
+    const key = shareKey();
+    const sounds: SharedPack["sounds"] = {};
+    for (const s of custom) sounds[s.name] = await soundBytes(s);
+    const id = await uploadPack({ source: state.source, assignments: state.assignments, sounds });
+    $<HTMLInputElement>("shareLink").value = shareLink(id);
+    sharedKey = key;
+  } catch (e) {
+    alert(`Couldn't share your pack: ${errMsg(e)}`);
+  } finally {
+    button.textContent = "Share pack";
+    renderShare();
+  }
+}
+
+async function copyShareLink() {
+  const input = $<HTMLInputElement>("shareLink");
+  try {
+    await navigator.clipboard.writeText(input.value);
+    $("shareCopy").textContent = "Copied";
+    setTimeout(() => ($("shareCopy").textContent = "Copy link"), 1500);
+  } catch {
+    input.select(); // clipboard blocked: leave it selected for Ctrl+C
+  }
+}
+
+/** Open a shared pack from #pack=<id>: its sounds become your tapes and its prompt choices replace yours. */
+async function importLinkedPack() {
+  const id = linkedPackId();
+  if (!id || !shareEnabled) return;
+  history.replaceState(null, "", location.pathname + location.search); // reloading shouldn't import it again
+  let pack: SharedPack;
+  try {
+    pack = await downloadPack(id);
+  } catch (e) {
+    alert(`Couldn't open the shared pack: ${errMsg(e)}`);
+    return;
+  }
+  const n = Object.keys(pack.assignments).length;
+  if (Object.keys(state.assignments).length &&
+      !confirm(`Open the shared pack? It changes ${n} prompt${n === 1 ? "" : "s"} and replaces your current choices. Its sounds are added to your tapes.`)) return;
+
+  // Keep the sender's names; reuse an identical tape you already have, otherwise pick a free name.
+  const same = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((x, i) => x === b[i]);
+  const local: Record<string, string> = {};
+  for (const [name, data] of Object.entries(pack.sounds)) {
+    let as = name;
+    let have: Uint8Array | undefined;
+    for (let k = 2; (have = await store.get(`sound:${as}`)) && !same(have, data); k++) as = `${name}_${k}`;
+    if (!have) await store.set(`sound:${as}`, data);
+    local[name] = as;
+  }
+  state.assignments = Object.fromEntries(Object.entries(pack.assignments)
+    .map(([slot, sid]) => [slot, sid.startsWith("custom/") ? `custom/${local[sid.slice(7)]}` : sid]));
+  // Bring back any library tapes the pack uses; loadSounds() drops ones this site doesn't have.
+  const used = new Set(Object.values(state.assignments));
+  state.hiddenLibrary = state.hiddenLibrary.filter((sid) => !used.has(sid));
+  if (LANG_NAMES[pack.source]) {
+    state.source = pack.source;
+    $<HTMLSelectElement>("source").value = pack.source;
+  }
+  state.built = undefined;
+  save();
+  await loadSounds();
 }
 
 // ---------- direct Bluetooth install ----------
@@ -601,6 +690,11 @@ $("reset").onclick = () => {
   save();
   renderSlots();
 };
+$("share").hidden = !shareEnabled;
+$("share").onclick = () => void sharePack();
+$("shareCopy").onclick = () => void copyShareLink();
+// A share link pasted into this tab only changes the hash.
+addEventListener("hashchange", () => void importLinkedPack().then(loadSourcePack));
 $("btMdr").onclick = () => void connectBluetooth("mdr");
 $("btRace").onclick = () => void connectBluetooth("race");
 $("btCheck").onclick = () => void checkBluetooth();
@@ -643,4 +737,4 @@ renderSony();
 renderSlots();
 renderBluetooth();
 void store.persist();
-void loadSounds().then(loadSourcePack);
+void loadSounds().then(importLinkedPack).then(loadSourcePack);

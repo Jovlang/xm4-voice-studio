@@ -681,6 +681,7 @@ code { font: 13px var(--mono); background: var(--bezel); color: var(--text); pad
   transition: background-color .12s, color .12s;
 }
 .screen button::before { content: none; }
+.screen button[hidden] { display: none; }
 .screen button:hover:not(:disabled), .screen .tab:hover { background: rgba(142, 245, 138, .14); }
 .screen button:active:not(:disabled) { padding: 6px 16px; background: var(--crt); color: #062010; text-shadow: none; }
 .screen button.icon { display: grid; width: 100%; height: calc(var(--row) - 3px); padding: 0; border: 0; font-size: 11px; }
@@ -698,6 +699,20 @@ code { font: 13px var(--mono); background: var(--bezel); color: var(--text); pad
   border-top: 1px solid var(--crt-line);
 }
 .tabs { display: flex; flex-wrap: wrap; gap: 10px; }
+/* Share link: a read-only field in the screen's green with its copy key alongside. */
+.share { grid-column: 1 / -1; display: flex; gap: 10px; }
+.share[hidden] { display: none; }
+.share input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  font: 13px var(--mono);
+  color: var(--crt-hot);
+  background: rgba(0, 0, 0, .35);
+  border: 1px solid var(--crt-line);
+  border-radius: 0;
+}
+.share input:focus-visible { outline: 2px solid var(--crt-hot); outline-offset: 2px; }
 /* "THREAT LEVEL: 7": big caps with the figure in cyan. */
 .screen-stat { justify-self: end; font-size: 17px; letter-spacing: .03em; }
 .screen-stat:empty { display: none; }

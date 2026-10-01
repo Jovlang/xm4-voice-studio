@@ -27,7 +27,8 @@
     "@noble/ciphers": "^2.4.0",
     "@noble/hashes": "^2.4.0",
     "astro": "^7.3.5",
-    "dseg": "^0.46.0"
+    "dseg": "^0.46.0",
+    "fflate": "^0.8.3"
   },
   "allowScripts": {
     "esbuild": true

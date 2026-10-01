@@ -138,9 +138,14 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
               <div class="tabs">
                 <label class="tab"><input type="checkbox" id="showAll" /> Show all slots</label>
                 <button id="reset" class="tab">Reset to stock</button>
+                <button id="share" class="tab" hidden>Share pack</button>
               </div>
               <span id="capText" class="screen-stat" tabindex="-1"></span>
               <div id="cap" class="meter" aria-hidden="true"><div></div></div>
+              <div id="shareBox" class="share" hidden>
+                <input id="shareLink" readonly aria-label="Share link" />
+                <button id="shareCopy">Copy link</button>
+              </div>
             </div>
           </div>
         </div>
