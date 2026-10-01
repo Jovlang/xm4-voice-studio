@@ -1,20 +1,21 @@
-/* Cassette-futurist deck: bone plastic modules on a black chassis, signal red, LCD readouts. */
+/* One graphite chassis. Every section is the same unit, every control sits in the same bezel,
+   and phosphor green is the only accent; red is kept for errors and the EQ peak hold. */
 :root {
-  --void: #0b0b0c;
-  --chassis: #151516;
-  --bone: #ebe5d6;
-  --bone-2: #d9d0bb;
-  --ink: #121212;
-  --ink-2: #57524a;
-  --red: #e2231a;
-  --orange: #ff6a13;
-  --amber: #ffb200;
-  --lcd-bg: #170c09;
-  --lcd: #ff8a3d;
-  --lcd-ok: #6dffa8;
+  --void: #0a0b0c;
+  --unit: #141518;
+  --unit-edge: #24272c;
+  --bezel: #0e0f12;
+  --text: #d4d8d0;
+  --dim: #8b9189;
+  --faint: #5b605a;
+  --line: rgba(212, 216, 208, .1);
+  --crt: #8ef58a;
+  --crt-dim: rgba(142, 245, 138, .55);
+  --crt-line: rgba(142, 245, 138, .85);
+  --crt-hot: #d9fbff;
+  --amber: #f4a32e;
+  --red: #ff4b40;
   --lcd-err: #ff5a52;
-  --ok: #1d7a44;
-  --bad: #c41a12;
   --wide: "Archivo Variable", "Archivo", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
   --dot: "DotGothic16", "IBM Plex Mono", monospace;
@@ -24,402 +25,356 @@
 html { background: var(--void); }
 body {
   margin: 0;
-  color: var(--bone);
+  color: var(--text);
   font: 15px/1.55 var(--wide);
-  font-stretch: 100%;
   background:
-    radial-gradient(circle at 1px 1px, rgba(235, 229, 214, .08) 1px, transparent 1.5px) 0 0 / 22px 22px,
+    radial-gradient(circle at 1px 1px, rgba(212, 216, 208, .05) 1px, transparent 1.5px) 0 0 / 22px 22px,
     var(--void);
   min-height: 100vh;
 }
-a { color: var(--red); text-underline-offset: 3px; }
-.jp { font-family: var(--dot); letter-spacing: .06em; }
-b { font-weight: 700; }
+a { color: var(--crt); text-underline-offset: 3px; }
+b { font-weight: 700; color: #f0f2ec; }
+.ok { color: var(--crt); }
+.err { color: var(--red); }
+.muted { color: var(--dim); }
 
-/* ---------- faceplate: a cream magazine-ad poster ---------- */
-/* Keep the poster above adjacent modules. */
-.faceplate { position: relative; z-index: 11; max-width: 1180px; margin: 0 auto; padding: 24px 32px 0; }
-.poster {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  padding: 20px 40px 0;
-  background: #ece8dc;
-  color: var(--ink);
-  border-radius: 6px;
-  box-shadow: 0 0 0 2px #000, 8px 8px 0 #000;
-}
-.copy { position: relative; --slab: clamp(56px, 10vw, 124px); }
-/* The orange block from the ad: flush right, resting on the foot rule. */
-.slab { position: absolute; right: -40px; top: 56px; bottom: -16px; width: var(--slab); background: var(--orange); }
-/* The headphones stand in front of the block, like the car in the ad. */
-.cans { position: absolute; right: calc(var(--slab) - 40px - 36px); bottom: 0; height: calc((100% + 16px) * .8); width: auto; filter: drop-shadow(10px 6px 10px rgba(0, 0, 0, .18)); }
-.kicker { margin: 0; font: 700 14px/1 var(--wide); font-stretch: 100%; letter-spacing: -.01em; }
-/* "It's a Sony" style dot mark, top right. */
-.mark { position: absolute; right: 24px; top: 20px; display: grid; justify-items: center; gap: 4px; }
-.mark svg { width: 36px; height: 36px; fill: var(--ink); }
-.mark b { font: 700 8px/1 var(--wide); font-stretch: 125%; letter-spacing: .12em; }
-.rule { display: block; width: 90px; height: 1px; margin: 10px 0 12px; background: var(--orange); }
-.headline {
-  max-width: 18ch;
+/* ---------- shared type ---------- */
+h1, h2 {
   margin: 0;
-  font: 400 clamp(26px, min(3.2vw, 4.4vh), 40px)/.98 "Instrument Serif", Georgia, serif;
-  letter-spacing: -.015em;
+  font-weight: 800;
+  font-stretch: 125%;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1.1;
 }
-.model {
-  margin: 10px 0 0;
-  font: 400 clamp(56px, min(9vw, 12vh), 116px)/.8 "Instrument Serif", Georgia, serif;
-  letter-spacing: -.035em;
-  color: var(--ink);
-  white-space: nowrap;
+h1 { font-size: clamp(22px, 3vw, 30px); }
+h2 { display: flex; align-items: center; gap: 14px; font-size: 16px; }
+h3, .label, label.field, .kicker, summary, .specs dt {
+  margin: 0;
+  font: 600 11px/1.2 var(--mono);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--dim);
 }
-.foot {
+.num { font: 600 12px/1 var(--mono); letter-spacing: .1em; color: var(--crt); text-shadow: 0 0 6px rgba(142, 245, 138, .45); }
+
+/* ---------- layout: header, units, bezels ---------- */
+.masthead, main, .underside { max-width: 1180px; margin: 0 auto; padding-left: 32px; padding-right: 32px; }
+.masthead {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px 40px;
+  padding-top: 28px;
+  padding-bottom: 4px;
+}
+.brand { display: flex; align-items: center; gap: 16px; }
+.mark { width: 40px; height: 40px; fill: var(--text); }
+.kicker { margin-bottom: 6px; }
+.tagline { margin: 0; max-width: 46ch; color: var(--dim); font-size: 14px; }
+.specs { margin: 0; display: grid; gap: 4px; }
+.specs div { display: grid; grid-template-columns: 56px auto; align-items: baseline; }
+.specs dt { font-size: 10px; }
+.specs dd { margin: 0; font: 13px/1.3 var(--mono); }
+
+main { display: grid; gap: 24px; padding-top: 24px; padding-bottom: 32px; }
+.unit {
+  background: var(--unit);
+  border: 1px solid var(--unit-edge);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 18px 40px rgba(0, 0, 0, .35);
+}
+.unit-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px 24px;
-  margin: 16px -40px 0;
-  padding: 10px 40px 12px;
-  border-top: 1px solid rgba(18, 18, 18, .18);
+  gap: 10px 20px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--line);
 }
-.tagline { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); }
-.specs { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 22px; }
-.specs div { display: flex; align-items: baseline; gap: 8px; }
-.specs dt { font: 600 10px/1 var(--mono); letter-spacing: .22em; text-transform: uppercase; color: var(--orange); }
-.specs dd { margin: 0; font: 13px/1.2 var(--mono); }
+.unit-head h2 { margin-right: auto; }
+.unit-head label.field { display: flex; align-items: center; gap: 12px; }
+.hint { flex-basis: 100%; margin: -6px 0 0; text-align: right; font: 11px var(--mono); color: var(--faint); }
+.unit-body { display: grid; gap: 20px; padding: 24px; }
+.unit-body p { margin: 0 0 10px; }
 
-/* ---------- modules ---------- */
-main { display: grid; gap: 28px; max-width: 1180px; margin: 0 auto; padding: 32px 32px 40px; }
-.module {
-  background: var(--bone);
-  color: var(--ink);
-  border-radius: 6px;
-  box-shadow: 0 0 0 2px #000, 8px 8px 0 #000;
-  overflow: hidden;
+/* The one frame every control and screen sits in. */
+.bezel {
+  background: linear-gradient(180deg, #1a1c21, var(--bezel) 60%);
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255, 255, 255, .07);
 }
-.label {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  align-items: stretch;
-  background: var(--ink);
-  color: var(--bone);
-  min-height: 64px;
-}
-.label .title { display: flex; align-items: baseline; gap: 16px; padding: 14px 20px; flex-wrap: wrap; }
-h2 {
-  margin: 0;
-  font: 800 22px/1.1 var(--wide);
-  font-stretch: 125%;
-  letter-spacing: .02em;
-  text-transform: uppercase;
-}
-.label .title .jp { color: var(--red); font-size: 15px; }
-.code {
-  align-self: center;
-  padding: 0 18px;
-  font: 600 11px/1 var(--mono);
-  letter-spacing: .25em;
-  color: #8f887a;
-}
-/* The classic cassette-label colour bands. */
-.bands { display: flex; }
-.bands i { width: 14px; }
-.bands i:nth-child(1) { background: var(--red); }
-.bands i:nth-child(2) { background: var(--orange); }
-.bands i:nth-child(3) { background: var(--amber); }
-.bands i:nth-child(4) { background: var(--bone-2); }
-.body { padding: 22px 26px 26px; }
-h3 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 26px 0 10px;
-  font: 700 13px/1 var(--mono);
-  letter-spacing: .18em;
-  text-transform: uppercase;
-}
-h3 .tick {
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  background: var(--ink);
-  color: var(--bone);
-  border-radius: 2px;
-  font-size: 11px;
-  letter-spacing: 0;
-}
-.muted { color: var(--ink-2); }
-.ok { color: var(--ok); }
-.err { color: var(--bad); }
-.warn { color: var(--red); }
-.module p { margin: 0 0 10px; }
-.row { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
-label.field { display: grid; gap: 6px; font: 600 11px/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
-.columns { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px 36px; }
-ul.checks, ol.steps { margin: 0; padding-left: 20px; }
-ul.checks li, ol.steps li { margin: 6px 0; }
-ol.steps li::marker { font: 700 13px var(--mono); color: var(--red); }
-ul.checks li::marker { content: "■  "; color: var(--red); font-size: 10px; }
-ul.files { margin: 8px 0 12px; padding: 0; list-style: none; font-family: var(--mono); word-break: break-all; }
-code { font: 13px var(--mono); background: var(--ink); color: var(--bone); padding: 1px 6px; border-radius: 2px; }
-
-/* Warning panel, e.g. when Sony's pack can't be downloaded. */
-.alert {
-  margin-top: 16px;
-  padding: 14px 16px 16px;
-  background: repeating-linear-gradient(-45deg, rgba(226, 35, 26, .08) 0 12px, transparent 12px 24px), #f3e3cf;
-  border: 2px solid var(--red);
-  border-left-width: 8px;
-  border-radius: 4px;
-}
-.alert[hidden] { display: none; }
-.alert-title { font: 700 13px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--bad); }
+.panel-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.panel-head h3 { color: var(--text); }
+.count { margin-right: auto; font: 15px var(--dot); color: var(--crt); text-shadow: 0 0 6px rgba(142, 245, 138, .5); }
 
 /* ---------- controls ---------- */
 select {
   font: 13px var(--mono);
-  color: var(--bone);
-  background: var(--ink);
-  border: 2px solid var(--ink);
-  border-radius: 3px;
-  padding: 7px 30px 7px 10px;
+  color: var(--text);
+  background-color: var(--bezel);
+  border: 1px solid #000;
+  border-radius: 6px;
+  padding: 8px 30px 8px 12px;
   appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, var(--red) 50%), linear-gradient(135deg, var(--red) 50%, transparent 50%);
+  background-image: linear-gradient(45deg, transparent 50%, var(--crt) 50%), linear-gradient(135deg, var(--crt) 50%, transparent 50%);
   background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%;
   background-size: 5px 5px;
   background-repeat: no-repeat;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .8), 0 1px 0 rgba(255, 255, 255, .05);
   min-width: 180px;
+  cursor: pointer;
 }
-#source { cursor: pointer; transition: background-color .15s, border-color .15s, box-shadow .15s; }
-#source:hover { background-color: #302923; border-color: var(--red); box-shadow: 0 0 0 2px rgba(226, 35, 26, .12); }
-select:focus-visible, button:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+#source:hover { border-color: var(--crt-dim); }
+select:focus-visible, button:focus-visible { outline: 2px solid var(--crt); outline-offset: 2px; }
 
-/* Console keys. Each button is a fixed well in the panel; ::before is the keycap sitting in it.
-   Pressing sinks the cap (and its label) into the well instead of moving the whole key.
-   The light comes from the lettering, not the edges. */
+/* Keys: one dark keycap everywhere. The primary key's lettering is lit green. */
 button {
-  --cap-top: 3px;
-  --cap-bottom: 8px;
-  --side: 5px;
-  position: relative;
-  isolation: isolate;
-  font: 700 12px/1.2 var(--mono);
+  font: 600 11px/1.2 var(--mono);
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: #ffd8ad;
-  text-shadow: 0 0 3px rgba(255, 170, 90, .95), 0 0 10px rgba(255, 120, 30, .85), 0 0 22px rgba(255, 100, 10, .5);
-  background: #060708;
-  border: 0;
-  border-radius: 10px;
-  padding: 14px 18px 19px;
-  box-shadow: inset 0 3px 6px rgba(0, 0, 0, .95), inset 0 0 0 1px #000, 0 1px 0 rgba(255, 255, 255, .07);
+  color: var(--text);
+  background: linear-gradient(180deg, #2b2e34, #1c1e23);
+  border: 1px solid #000;
+  border-radius: 6px;
+  padding: 10px 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 2px 0 #050506;
   cursor: pointer;
-  transition: padding .06s, color .15s;
+  transition: background .15s, color .15s, box-shadow .06s, transform .06s;
 }
-button::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: var(--cap-top) 3px var(--cap-bottom);
-  border-radius: 8px;
-  background: linear-gradient(180deg, #32353c 0%, #212328 45%, #181a1e 100%);
-  box-shadow:
-    0 var(--side) 0 #0b0c0e,
-    0 calc(var(--side) + 1px) 4px rgba(0, 0, 0, .7),
-    inset 0 1px 0 rgba(255, 255, 255, .14),
-    inset 0 -2px 0 rgba(0, 0, 0, .45);
-  transition: inset .06s, box-shadow .06s, background .15s;
-}
-button:hover:not(:disabled)::before { background: linear-gradient(180deg, #383b43 0%, #26282e 45%, #1b1d21 100%); }
-/* Pressed (and latched): cap sinks into the well, sides disappear, label follows. */
+button:hover:not(:disabled) { background: linear-gradient(180deg, #33363d, #22242a); }
 button:active:not(:disabled), button.on {
-  --cap-top: 7px;
-  --cap-bottom: 4px;
-  --side: 0px;
-  padding-top: 18px;
-  padding-bottom: 15px;
+  transform: translateY(2px);
+  background: linear-gradient(180deg, #1a1c20, #22252a);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, .7);
 }
-button:active:not(:disabled)::before, button.on::before {
-  background: linear-gradient(180deg, #1c1e22, #24272c);
-  box-shadow: inset 0 3px 6px rgba(0, 0, 0, .75), inset 0 -1px 0 rgba(255, 255, 255, .05);
-}
-/* Unlit: the lettering's lamp is off. */
-button:disabled { cursor: not-allowed; color: #5d564e; text-shadow: none; }
-button:disabled::before { background: linear-gradient(180deg, #25272b, #1a1b1e); }
-/* The main action: a backlit amber cap. */
-button.primary { color: #2a0c00; text-shadow: 0 1px 0 rgba(255, 226, 180, .55); }
-button.primary::before {
-  background: radial-gradient(120% 110% at 50% 30%, #ffe3ae 0%, #ffb454 32%, #ff7a1a 64%, #c2410c 100%);
-  box-shadow:
-    0 var(--side) 0 #7a2604,
-    0 calc(var(--side) + 1px) 4px rgba(0, 0, 0, .7),
-    0 0 26px rgba(255, 130, 30, .75),
-    inset 0 2px 3px rgba(255, 255, 255, .55),
-    inset 0 -5px 10px rgba(140, 40, 0, .45);
-}
-button.primary:active:not(:disabled)::before { background: radial-gradient(120% 110% at 50% 40%, #ffd08a 0%, #ff9a3a 38%, #e5620f 70%, #a8360a 100%); }
-button.primary:disabled { color: #8a6a52; text-shadow: none; }
-button.primary:disabled::before { background: linear-gradient(180deg, #4d3322, #33210f); box-shadow: 0 var(--side) 0 #1d1108, inset 0 1px 0 rgba(255, 255, 255, .08); }
-button.small { padding: 10px 14px 14px; font-size: 11px; }
-button.small:active:not(:disabled) { padding-top: 13px; padding-bottom: 11px; }
-/* Play keys: small square keys with a glowing ▶. */
-button.icon {
-  --cap-top: 2px;
-  --cap-bottom: 5px;
-  --side: 3px;
-  width: 36px;
-  height: 36px;
-  padding: 0 0 3px;
-  font-size: 12px;
-  letter-spacing: 0;
-  border-radius: 8px;
-}
-button.icon::before { inset: var(--cap-top) 2px var(--cap-bottom); border-radius: 6px; }
-button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 2px 0 1px; }
-.transport { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 22px; }
-.transport-control { width: 176px; }
+button:disabled { cursor: not-allowed; color: var(--faint); background: #18191d; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04); }
+button.primary:not(:disabled) { color: var(--crt); text-shadow: 0 0 8px rgba(142, 245, 138, .55); border-color: rgba(142, 245, 138, .35); }
+button.small { padding: 8px 12px; }
+button svg { display: block; width: 12px; height: 12px; margin: 0 auto; fill: currentColor; }
+
+.transport { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 16px; }
+.transport button { width: 100%; min-height: 54px; }
 .transport-led {
   display: block;
-  height: 5px;
-  margin: 8px 6px 0;
+  height: 4px;
+  margin: 10px 8px 0;
   border-radius: 2px;
-  background: #252a28;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0), inset 0 1px 2px rgba(0, 0, 0, .9);
+  background: #23262a;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .9);
   transition: background-color .35s ease, box-shadow .35s ease, opacity .35s ease;
 }
-.transport-control[data-status="on"] .transport-led {
-  background: #d2be88;
-  box-shadow: 0 0 8px rgba(210, 190, 136, .4), inset 0 1px 2px rgba(255, 255, 255, .4);
-}
+.transport-control[data-status="on"] .transport-led { background: rgba(142, 245, 138, .45); }
 .transport-control[data-status="progress"] .transport-led {
-  background: #f4a32e;
-  box-shadow: 0 0 8px rgba(244, 163, 46, .8), inset 0 1px 2px rgba(255, 255, 255, .45);
+  background: var(--amber);
+  box-shadow: 0 0 8px rgba(244, 163, 46, .8);
   animation: transport-pulse .9s ease-in-out infinite alternate;
 }
-.transport-control[data-status="success"] .transport-led {
-  background: #56d785;
-  box-shadow: 0 0 8px rgba(86, 215, 133, .7), inset 0 1px 2px rgba(255, 255, 255, .4);
-}
-.transport-control[data-status="failed"] .transport-led {
-  background: #ef4c42;
-  box-shadow: 0 0 8px rgba(239, 76, 66, .7), inset 0 1px 2px rgba(255, 255, 255, .35);
-}
+.transport-control[data-status="success"] .transport-led { background: var(--crt); box-shadow: 0 0 8px rgba(142, 245, 138, .8); }
+.transport-control[data-status="failed"] .transport-led { background: var(--red); box-shadow: 0 0 8px rgba(255, 75, 64, .7); }
 @keyframes transport-pulse { to { opacity: .4; } }
-/* Low, closely spaced mechanical keys set into the deck faceplate. The sound bay's keys share the look. */
-.transport button, .dock-bay button {
-  --cap-top: 3px;
-  --cap-bottom: 7px;
-  --side: 4px;
-  width: 100%;
-  min-height: 68px;
-  padding: 13px 14px 17px;
-  border-radius: 5px;
-  color: #292b2d;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, .4);
-  font-size: 11px;
-  line-height: 1.35;
-  letter-spacing: .035em;
-  box-shadow: inset 0 2px 4px #000, inset 0 0 0 1px #08090b;
-}
-.transport button::before, .dock-bay button::before {
-  inset: var(--cap-top) 3px var(--cap-bottom);
-  border-radius: 3px;
-  background: linear-gradient(180deg, #d6d5cf 0%, #aaa9a3 18%, #8d8d88 88%, #737570 100%);
-  box-shadow: 0 var(--side) 0 #444649, 0 calc(var(--side) + 1px) 3px #000,
-    inset 0 1px 0 rgba(255, 255, 255, .8), inset 1px 0 0 rgba(255, 255, 255, .25),
-    inset 0 -1px 0 rgba(0, 0, 0, .35);
-}
-.transport button:hover:not(:disabled)::before, .dock-bay button:hover:not(:disabled)::before { background: linear-gradient(180deg, #e0dfd9 0%, #b4b3ad 18%, #969691 88%, #7b7d78 100%); }
-.transport button:active:not(:disabled), .transport button.on, .dock-bay button:active:not(:disabled) {
-  --cap-top: 5px;
-  --cap-bottom: 5px;
-  --side: 2px;
-  padding: 15px 14px 15px;
-}
-.transport-control[data-status="progress"] button {
-  --cap-top: 5px;
-  --cap-bottom: 5px;
-  --side: 2px;
-  padding: 15px 14px 15px;
-}
-.transport button:active:not(:disabled)::before, .transport button.on::before, .dock-bay button:active:not(:disabled)::before {
-  background: linear-gradient(180deg, #c7c6c0 0%, #a2a19b 18%, #858580 88%, #70726d 100%);
-  box-shadow: 0 var(--side) 0 #393b3d, inset 0 2px 2px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 255, 255, .4);
-}
-.transport-control[data-status="progress"] button::before {
-  background: linear-gradient(180deg, #c7c6c0 0%, #a2a19b 18%, #858580 88%, #70726d 100%);
-  box-shadow: 0 var(--side) 0 #393b3d, inset 0 2px 2px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 255, 255, .4);
-}
-.transport button:disabled, .dock-bay button:disabled {
-  --cap-top: 5px;
-  --cap-bottom: 5px;
-  --side: 2px;
-  padding: 15px 14px 15px;
-  color: #5f605d;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, .2);
-}
-.transport button:disabled::before, .dock-bay button:disabled::before { background: linear-gradient(180deg, #c7c6c0 0%, #a6a5a0 18%, #888985 88%, #747672 100%); }
-.transport button:disabled::before, .dock-bay button:disabled::before {
-  box-shadow: 0 var(--side) 0 #393b3d, inset 0 2px 2px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 255, 255, .4);
-}
-.transport button:disabled:hover { color: #444643; }
-.transport button:disabled:hover::before { background: linear-gradient(180deg, #d2d1cb 0%, #afaea8 18%, #92938f 88%, #7b7d79 100%); }
-.transport button.primary, .dock-bay button.primary { color: #fff0e8; text-shadow: 0 1px 1px rgba(75, 0, 0, .65); }
-.transport button.primary::before, .dock-bay button.primary::before { background: linear-gradient(180deg, #ee5847 0%, #d6382b 18%, #b62620 88%, #941b18 100%); box-shadow: 0 var(--side) 0 #631713, 0 calc(var(--side) + 1px) 3px #000, inset 0 1px 0 rgba(255, 220, 210, .6), inset 0 -1px 0 rgba(60, 0, 0, .45); }
-.transport button.primary:hover:not(:disabled)::before, .dock-bay button.primary:hover:not(:disabled)::before { background: linear-gradient(180deg, #f36554 0%, #e04133 18%, #c52d25 88%, #9f211c 100%); }
-.transport button.primary:disabled, .dock-bay button.primary:disabled { color: #f0d5ce; text-shadow: 0 1px 1px rgba(75, 0, 0, .5); }
-.transport button.primary:disabled::before, .dock-bay button.primary:disabled::before {
-  background: linear-gradient(180deg, #d94c3e 0%, #c03229 18%, #a5241f 88%, #8c1d19 100%);
-  box-shadow: 0 var(--side) 0 #631713, inset 0 2px 2px rgba(60, 0, 0, .28);
-}
-.transport button.primary:disabled:hover { color: #fff0e8; }
-.transport button.primary:disabled:hover::before { background: linear-gradient(180deg, #e35446 0%, #c8372d 18%, #ad2a23 88%, #95221d 100%); }
-.transport:has(.transport-control[data-status="progress"] #btMdr) #btRace:disabled:not(.on),
-.transport:has(.transport-control[data-status="progress"] #btRace) #btMdr:disabled:not(.on) {
-  --cap-top: 3px;
-  --cap-bottom: 7px;
-  --side: 4px;
-  padding: 13px 14px 17px;
-}
-.transport:has(.transport-control[data-status="progress"] #btMdr) #btRace:disabled:not(.on)::before,
-.transport:has(.transport-control[data-status="progress"] #btRace) #btMdr:disabled:not(.on)::before {
-  box-shadow: 0 var(--side) 0 #444649, 0 calc(var(--side) + 1px) 3px #000,
-    inset 0 1px 0 rgba(255, 255, 255, .8), inset 1px 0 0 rgba(255, 255, 255, .25),
-    inset 0 -1px 0 rgba(0, 0, 0, .35);
-}
-.transport:has(.transport-control[data-status="progress"] #btCheck) #btInstall:disabled,
-.transport:has(.transport-control[data-status="progress"] #btInstall) #btCheck:disabled {
-  --cap-top: 3px;
-  --cap-bottom: 7px;
-  --side: 4px;
-  padding: 13px 14px 17px;
-}
-.transport:has(.transport-control[data-status="progress"] #btCheck) #btInstall:disabled::before,
-.transport:has(.transport-control[data-status="progress"] #btInstall) #btCheck:disabled::before {
-  box-shadow: 0 var(--side) 0 #444649, 0 calc(var(--side) + 1px) 3px #000,
-    inset 0 1px 0 rgba(255, 255, 255, .8), inset 1px 0 0 rgba(255, 255, 255, .25),
-    inset 0 -1px 0 rgba(0, 0, 0, .35);
-}
-.transport:has(.transport-control[data-status="progress"] #btCheck) #btInstall:disabled::before {
-  box-shadow: 0 var(--side) 0 #631713, 0 calc(var(--side) + 1px) 3px #000,
-    inset 0 1px 0 rgba(255, 220, 210, .6), inset 0 -1px 0 rgba(60, 0, 0, .45);
-}
-.transport-control[data-status="progress"] button.primary::before {
-  background: linear-gradient(180deg, #d94c3e 0%, #c03229 18%, #a5241f 88%, #8c1d19 100%);
-  box-shadow: 0 var(--side) 0 #631713, inset 0 2px 2px rgba(60, 0, 0, .28);
-}
-.transport button.primary:active:not(:disabled)::before, .dock-bay button.primary:active:not(:disabled)::before { background: linear-gradient(180deg, #d94c3e 0%, #c03229 18%, #a5241f 88%, #8c1d19 100%); box-shadow: 0 var(--side) 0 #631713, inset 0 2px 2px rgba(60, 0, 0, .28); }
-/* ---------- stereo rack (step 2) ---------- */
-.body > .row ~ .rack { margin: 20px 0 6px; }
-.rack {
-  margin-top: 24px;
-  background: linear-gradient(180deg, #1a1d23, #0e1014 60%);
+
+/* ---------- sounds: a cassette-deck door that cracks open on hover ---------- */
+.dock {
+  position: relative;
+  z-index: 5;
+  height: 96px;
+  perspective: 1100px;
+  perspective-origin: 50% -120%; /* eye slightly above the deck, so the door's top edge and the cavity show */
   border-radius: 10px;
-  box-shadow: 0 0 0 2px #000, inset 0 1px 0 rgba(255, 255, 255, .08), 0 14px 30px rgba(0, 0, 0, .35);
-  overflow: hidden;
+  background: #050506;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, .95), 0 0 0 1px #000, 0 1px 0 rgba(255, 255, 255, .06);
+  outline: none;
 }
+.dock:focus-visible { box-shadow: inset 0 3px 8px rgba(0, 0, 0, .95), 0 0 0 2px var(--crt); }
+.dock-door {
+  position: absolute;
+  inset: 3px;
+  z-index: 2;
+  border-radius: 8px;
+  color: var(--text);
+  box-shadow: 0 3px 0 #000;
+  transform-origin: 50% 100%;
+  transform-style: preserve-3d;
+  /* Build the 3D layers up front so the edge face is already painted when the door starts to tilt. */
+  transform: rotateX(0deg);
+  will-change: transform;
+  backface-visibility: hidden;
+  cursor: pointer;
+  transition: transform .5s cubic-bezier(.25, .9, .3, 1.05);
+}
+/* The face is clipped here rather than on the door, because clipping the door would flatten its 3D edge.
+   It has no background of its own: the window's spread shadow paints the plastic around a see-through hole. */
+.door-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 16px;
+  border-radius: inherit;
+  overflow: hidden;
+  transition: opacity .25s;
+}
+/* Plastic sheen and bevels, laid over everything, the glass included. */
+.door-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .07) 0%, transparent 50%, rgba(0, 0, 0, .28) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 -2px 0 rgba(0, 0, 0, .6);
+  pointer-events: none;
+}
+.door-title, .door-eject { position: relative; z-index: 1; }
+/* Door thickness: the top edge is a real face folded back into the deck, so it shows as the door tilts. */
+.dock-door::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 4px;
+  right: 4px;
+  height: 14px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #5d6169, #393c43 35%, #1e2024);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), inset 0 -1px 0 #000;
+  transform-origin: 50% 0;
+  transform: rotateX(-90deg);
+  will-change: transform;
+  transition: opacity .25s;
+}
+/* Lighting: the face turns away from the overhead light as it tilts, so it darkens toward the top. */
+.dock-door::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .55), rgba(0, 0, 0, .15) 60%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .35s;
+}
+.door-title { font: 600 11px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+/* Smoked window: tape spines visible through tinted plastic. */
+.door-window {
+  position: relative;
+  height: 58px;
+  display: grid;
+  place-items: center end;
+  padding-right: 14px;
+  border-radius: 6px;
+  overflow: hidden;
+  /* Clear glass with glare streaks; the tapes seen through it are the real cavity behind the door. */
+  background: linear-gradient(115deg, rgba(255, 255, 255, .14) 0 14%, transparent 15% 58%, rgba(255, 255, 255, .05) 59% 64%, transparent 65%);
+  box-shadow: inset 0 0 0 2px #000, inset 0 0 18px rgba(0, 0, 0, .8), 0 0 0 100vmax #1c1e23;
+}
+.door-window::after { content: ""; position: absolute; inset: 0; background: rgba(8, 10, 12, .3); } /* the smoke */
+#soundCount { position: relative; z-index: 1; font: 16px var(--dot); color: var(--crt); text-shadow: 0 0 6px rgba(142, 245, 138, .7); }
+.door-eject { font: 600 10px var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--crt-dim); text-shadow: 0 0 6px rgba(142, 245, 138, .4); transition: color .2s; }
+/* The cavity behind the door: tape spines at the back, lit only at the top lip, shadowed below by the door. */
+.dock::before {
+  content: "";
+  position: absolute;
+  inset: 5px 10px;
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .1), transparent 15%, rgba(0, 0, 0, .35) 60%, rgba(0, 0, 0, .6)),
+    repeating-linear-gradient(90deg, #2c2f34 0 22px, #3d4148 22px 24px, #5fae5c 24px 26px, #2c2f34 26px 28px, #101113 28px 34px);
+  box-shadow: inset 0 0 0 1px #000, inset 0 6px 8px -4px rgba(0, 0, 0, .9);
+  opacity: .8;
+}
+/* Hover: the door cracks open a few degrees, like a deck's cassette door before you pull it down. */
+.dock:hover .dock-door, .dock:focus-visible .dock-door {
+  transform: rotateX(-34deg);
+  transition-duration: .35s;
+}
+.dock:hover .dock-door::after, .dock:focus-visible .dock-door::after { opacity: 1; }
+.dock:hover .door-eject, .dock:focus-visible .door-eject { color: var(--crt); }
+/* The bay: the sounds panel itself, laid over the content below while open. */
+.dock-bay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 100%;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+  padding: 14px 16px 16px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #1a1c21, var(--bezel) 60%);
+  box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255, 255, 255, .07), 0 22px 44px rgba(0, 0, 0, .55);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity .25s, visibility 0s .25s;
+}
+/* Click: the door fades out and the bay fades in over the content below. The door's parts fade rather than
+   the door itself: opacity on the door would flatten its 3D context and drop the edge face on the first frame. */
+.dock.open .dock-door, .dock.hold .dock-door { pointer-events: none; }
+.dock.open .door-face, .dock.hold .door-face,
+.dock.open .dock-door::before, .dock.hold .dock-door::before,
+.dock.open .dock-door::after, .dock.hold .dock-door::after { opacity: 0; transition-duration: .25s; }
+.dock.open .dock-bay, .dock.hold .dock-bay {
+  z-index: 3;
+  visibility: visible;
+  opacity: 1;
+  transition: opacity .25s, visibility 0s;
+}
+.bay-keys { display: flex; gap: 8px; }
+/* No hover on touch screens: keep the bay open. */
+@media (hover: none) {
+  .dock { height: auto; }
+  .dock-door, .dock::before { display: none; }
+  .dock-bay { position: static; visibility: visible; opacity: 1; }
+  #dockClose { display: none; }
+}
+
+.drop {
+  padding: 14px;
+  border: 1px dashed rgba(212, 216, 208, .22);
+  border-radius: 6px;
+  text-align: center;
+  font: 12px/1.5 var(--mono);
+  color: var(--dim);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.drop:hover, .drop.over { background: rgba(142, 245, 138, .06); color: var(--crt); border-color: var(--crt-dim); }
+.tapes { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.tape {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 6px 0 14px;
+  background: #17191d;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255, 255, 255, .05);
+  font: 13px var(--mono);
+}
+.tape::before { content: ""; position: absolute; left: 5px; top: 10px; bottom: 10px; width: 3px; border-radius: 1px; background: var(--faint); }
+.tape.custom::before { background: var(--crt); box-shadow: 0 0 6px rgba(142, 245, 138, .6); }
+.tape-num { font: 600 10px var(--mono); letter-spacing: .1em; color: var(--faint); }
+.tape-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tape-len { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.tape button { width: 34px; height: 32px; padding: 0; letter-spacing: 0; }
+.tape button.remove:hover:not(:disabled) { color: var(--red); }
+.tapes-empty { grid-column: 1 / -1; margin: 4px 0; font: 12px var(--mono); color: var(--dim); }
+.restore-tapes { grid-column: 1 / -1; justify-self: start; }
+
+/* Warning panel, e.g. when Sony's pack can't be downloaded. */
+.alert { padding: 14px 16px 16px; background: #1b1414; border: 1px solid rgba(255, 75, 64, .35); border-left: 4px solid var(--red); border-radius: 8px; }
+.alert[hidden] { display: none; }
+.alert-title { font: 600 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--red); }
+ul.files { margin: 8px 0 12px; padding: 0; list-style: none; font-family: var(--mono); word-break: break-all; }
+code { font: 13px var(--mono); background: var(--bezel); color: var(--text); padding: 1px 6px; border-radius: 4px; }
+
+/* ---------- dot-matrix rack ---------- */
+.rack { overflow: hidden; }
 .stereo {
   --dot: 7px;
   --rows: 16;
@@ -512,10 +467,8 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
 
 .rack-bottom { display: flex; align-items: center; gap: 18px; padding: 16px 20px 4px; flex-wrap: wrap; }
 /* The logo, always in its lit ("active") look: white letters with a layered bloom, on a thin
-   raised edge. Sits above the scanline overlay (body::after, z-index 10). */
+   raised edge. */
 .logo {
-  position: relative;
-  z-index: 11;
   font: 700 34px/1 "Arvo", serif;
   letter-spacing: .05em;
   transform: scaleX(1.15);
@@ -558,231 +511,10 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
 .vfd-time { font: 26px/1 "DSEG14", var(--mono); letter-spacing: .02em; white-space: nowrap; }
 .vfd-small { grid-column: 2 / 4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 600 9px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; opacity: .75; }
 
-
-/* ---------- drop zones and tapes ---------- */
-.drop {
-  border: 2px dashed var(--ink);
-  border-radius: 6px;
-  padding: 22px;
-  text-align: center;
-  color: var(--ink-2);
-  cursor: pointer;
-  background: repeating-linear-gradient(-45deg, transparent 0 14px, rgba(18, 18, 18, .035) 14px 28px);
-  transition: background .15s;
-}
-.drop b { color: var(--red); font-family: var(--mono); letter-spacing: .15em; text-transform: uppercase; }
-.drop:hover, .drop.over { background: var(--amber); color: var(--ink); }
-
-/* ---------- sound dock: a cassette-deck door beside the language select ---------- */
-.top-row { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 24px; align-items: end; }
-.dock {
-  position: relative;
-  z-index: 5;
-  height: 96px;
-  perspective: 1100px;
-  perspective-origin: 50% -120%; /* eye slightly above the deck, so the door's top edge and the cavity show */
-  border-radius: 9px;
-  background: #050506;
-  box-shadow: inset 0 3px 8px rgba(0, 0, 0, .95), 0 1px 0 rgba(255, 255, 255, .5);
-  outline: none;
-}
-.dock:focus-visible { box-shadow: inset 0 3px 8px rgba(0, 0, 0, .95), 0 0 0 3px var(--red); }
-.dock-door {
-  position: absolute;
-  inset: 3px;
-  z-index: 2;
-  border-radius: 7px;
-  color: var(--bone);
-  box-shadow: 0 3px 0 #000;
-  transform-origin: 50% 100%;
-  transform-style: preserve-3d;
-  /* Build the 3D layers up front so the edge face is already painted when the door starts to tilt. */
-  transform: rotateX(0deg);
-  will-change: transform;
-  backface-visibility: hidden;
-  cursor: pointer;
-  transition: transform .5s cubic-bezier(.25, .9, .3, 1.05);
-}
-/* The face is clipped here rather than on the door, because clipping the door would flatten its 3D edge.
-   It has no background of its own: the window's spread shadow paints the plastic around a see-through hole. */
-.door-face {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 18px;
-  padding: 10px 16px;
-  border-radius: inherit;
-  overflow: hidden;
-  transition: opacity .25s;
-}
-/* Plastic sheen and bevels, laid over everything, the glass included. */
-.door-face::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, .07) 0%, transparent 50%, rgba(0, 0, 0, .28) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), inset 0 -2px 0 rgba(0, 0, 0, .6);
-  pointer-events: none;
-}
-.door-title, .door-eject { position: relative; z-index: 1; }
-/* Door thickness: the top edge is a real face folded back into the deck, so it shows as the door tilts. */
-.dock-door::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 4px;
-  right: 4px;
-  height: 14px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, #6a6e78, #3d4048 35%, #202126);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -1px 0 #000;
-  transform-origin: 50% 0;
-  transform: rotateX(-90deg);
-  will-change: transform;
-  transition: opacity .25s;
-}
-/* Lighting: the face turns away from the overhead light as it tilts, so it darkens toward the top. */
-.dock-door::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(0, 0, 0, .55), rgba(0, 0, 0, .15) 60%, transparent);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .35s;
-}
-.door-title { display: grid; gap: 6px; font: 700 12px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
-.door-title .tick { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 8px; background: var(--bone); color: var(--ink); border-radius: 2px; font-size: 10px; letter-spacing: 0; }
-.door-title .jp { color: var(--red); font-size: 12px; letter-spacing: .1em; }
-/* Smoked window: tape spines visible through tinted plastic. */
-.door-window {
-  position: relative;
-  height: 58px;
-  display: grid;
-  place-items: center end;
-  padding-right: 14px;
-  border-radius: 6px;
-  overflow: hidden;
-  /* Clear glass with glare streaks; the tapes seen through it are the real cavity behind the door. */
-  background: linear-gradient(115deg, rgba(255, 255, 255, .16) 0 14%, transparent 15% 58%, rgba(255, 255, 255, .06) 59% 64%, transparent 65%);
-  box-shadow: inset 0 0 0 2px #000, inset 0 0 18px rgba(0, 0, 0, .8), 0 0 0 100vmax #1d1e22;
-}
-.door-window::after { content: ""; position: absolute; inset: 0; background: rgba(10, 12, 16, .28); } /* the smoke */
-#soundCount { position: relative; z-index: 1; font: 16px var(--dot); color: var(--lcd); text-shadow: 0 0 6px rgba(255, 138, 61, .7); }
-.door-eject { font: 700 10px var(--mono); letter-spacing: .2em; text-transform: uppercase; color: #ffb48a; text-shadow: 0 0 6px rgba(255, 120, 30, .8); }
-.dock-bay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  min-height: 100%;
-  z-index: 1;
-  padding: 14px;
-  border-radius: 9px;
-  background: linear-gradient(180deg, #17181c, #0d0e10);
-  box-shadow: 0 0 0 2px #000, inset 0 2px 10px rgba(0, 0, 0, .9), 0 22px 44px rgba(0, 0, 0, .55);
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity .25s, visibility 0s .25s;
-}
-/* Hover: the door cracks open a few degrees, like a deck's cassette door before you pull it down. */
-/* The cavity behind the door: tape spines at the back, lit only at the top lip, shadowed below by the door. */
-.dock::before {
-  content: "";
-  position: absolute;
-  inset: 5px 10px;
-  border-radius: 4px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .1), transparent 15%, rgba(0, 0, 0, .35) 60%, rgba(0, 0, 0, .6)),
-    repeating-linear-gradient(90deg, #3a312b 0 22px, #50433a 22px 24px, #b8352a 24px 26px, #3a312b 26px 28px, #121214 28px 34px);
-  box-shadow: inset 0 0 0 1px #000, inset 0 6px 8px -4px rgba(0, 0, 0, .9);
-  opacity: .8;
-}
-.dock:hover .dock-door, .dock:focus-visible .dock-door {
-  transform: rotateX(-34deg);
-  transition-duration: .35s;
-}
-.dock:hover .dock-door::after, .dock:focus-visible .dock-door::after { opacity: 1; }
-.dock:hover .door-eject, .dock:focus-visible .door-eject { color: #ffd9c2; }
-/* Click: the door fades out and the bay fades in over the content below. The door's parts fade rather than
-   the door itself: opacity on the door would flatten its 3D context and drop the edge face on the first frame. */
-.dock.open .dock-door, .dock.hold .dock-door { pointer-events: none; }
-.dock.open .door-face, .dock.hold .door-face,
-.dock.open .dock-door::before, .dock.hold .dock-door::before,
-.dock.open .dock-door::after, .dock.hold .dock-door::after { opacity: 0; transition-duration: .25s; }
-.dock.open .dock-bay, .dock.hold .dock-bay {
-  z-index: 3;
-  visibility: visible;
-  opacity: 1;
-  transition: opacity .25s, visibility 0s;
-}
-/* Inside the bay: a rack panel with a header strip, a slim drop slot, and a shelf of tapes. */
-.dock-bay { display: grid; gap: 12px; padding: 12px 14px 16px; }
-.bay-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(235, 229, 214, .12); color: var(--bone); }
-.bay-head .door-title { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.bay-head .door-title .tick { margin-right: 0; }
-.bay-count { font: 15px var(--dot); color: var(--lcd); text-shadow: 0 0 6px rgba(255, 138, 61, .6); }
-.bay-keys { display: flex; gap: 8px; margin-left: auto; }
-.dock-bay button { width: auto; min-height: 0; }
-.bay-keys button, .dock-bay .restore-tapes { padding: 9px 16px 13px; }
-.bay-keys button:active:not(:disabled), .bay-keys button:disabled,
-.dock-bay .restore-tapes:active:not(:disabled) { padding: 11px 16px 11px; }
-.dock .drop { padding: 10px 14px; border: 1px dashed rgba(235, 229, 214, .3); border-radius: 4px; background: none; color: #9c968a; font: 12px var(--mono); }
-.dock .drop:hover, .dock .drop.over { background: rgba(255, 178, 0, .1); color: var(--amber); border-color: var(--amber); }
-/* Every tape is the same size: a numbered label strip with a colour band, then its play and eject keys. */
-.tapes { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
-.tape {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
-  align-items: center;
-  gap: 8px;
-  height: 48px;
-  padding: 0 6px 0 14px;
-  background: linear-gradient(180deg, #202329, #16181c);
-  border-radius: 5px;
-  box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255, 255, 255, .07);
-  font: 13px var(--mono);
-  color: var(--bone);
-}
-.tape::before { content: ""; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 3px; border-radius: 1px; background: var(--red); }
-.tape.custom::before { background: var(--amber); }
-.tape-num { font: 600 10px var(--mono); letter-spacing: .1em; color: #6f6a61; }
-.tape-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tape-len { font-size: 11px; color: #9a9383; font-variant-numeric: tabular-nums; }
-.tape button { width: 36px; height: 38px; padding: 0 0 4px; font-size: 12px; letter-spacing: 0; }
-.tape button:active:not(:disabled) { padding: 2px 0 0; }
-.tape button svg { display: block; width: 12px; height: 12px; margin: 0 auto; fill: currentColor; }
-.tape button.remove { color: #b3261d; }
-.tapes-empty { grid-column: 1 / -1; margin: 4px 0; font: 12px var(--mono); color: #8f887a; }
-.dock-bay .restore-tapes { grid-column: 1 / -1; justify-self: start; }
-/* No hover on touch screens: keep the bay open. */
-@media (hover: none) {
-  .dock { height: auto; }
-  .dock-door, .dock::before { display: none; }
-  .dock-bay { position: static; visibility: visible; opacity: 1; }
-  #dockClose { display: none; }
-}
-
 /* ---------- prompt terminal ----------
    A phosphor-green records screen: wide heavy caps, labels trailing into rules, framed panels,
    tab keys along the bottom with the active one lit solid. */
-.terminal {
-  --crt: #8ef58a;
-  --crt-dim: rgba(142, 245, 138, .55);
-  --crt-line: rgba(142, 245, 138, .85);
-  --crt-hot: #d9fbff;
-  margin-top: 20px;
-  padding: 16px;
-  background: linear-gradient(180deg, #3a3f52, #232634 40%, #1a1c26);
-  border-radius: 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 -2px 0 rgba(0, 0, 0, .5), 0 6px 18px rgba(0, 0, 0, .35);
-}
+.terminal { padding: 14px; }
 .screen {
   position: relative;
   padding: 10px 12px 12px;
@@ -961,21 +693,48 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
 .screen .meter::before { background: rgba(142, 245, 138, .12); }
 .screen .meter > div { background: linear-gradient(90deg, var(--crt) 0 80%, var(--amber) 80% 92%, var(--red) 92%); }
 .screen .meter.over > div { background: var(--red); }
-/* ---------- meters, LCDs, deck ---------- */
+
+/* ---------- install ---------- */
+.columns { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px 36px; }
+.columns h3 { margin-bottom: 10px; }
+ul.checks, ol.steps { margin: 0; padding-left: 20px; }
+ul.checks li, ol.steps li { margin: 6px 0; }
+ol.steps li::marker { font: 600 12px var(--mono); color: var(--crt); }
+ul.checks li::marker { content: "■  "; color: var(--crt); font-size: 9px; }
+
+/* Green phosphor readouts, the same glass as the prompt screen. */
 .lcd {
   font-family: var(--dot);
-  background: var(--lcd-bg);
-  color: var(--lcd);
-  text-shadow: 0 0 6px rgba(255, 138, 61, .55);
-  border-radius: 4px;
+  color: var(--crt);
+  text-shadow: 0 0 6px rgba(142, 245, 138, .45);
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, .28) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 140% at 50% 40%, #0f2418 0%, #08140d 60%, #040a06 100%);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px #000, inset 0 0 30px rgba(0, 0, 0, .8);
 }
-/* Segmented VU meter: dim segments behind, lit segments clipped to --level. */
+.lcd.err { color: var(--lcd-err); text-shadow: 0 0 6px rgba(255, 90, 82, .6); }
+.log { padding: 14px; }
+pre.lcd {
+  margin: 0;
+  padding: 14px 16px;
+  height: 240px; /* fixed: long logs scroll inside instead of growing the page */
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.terminal-status { display: block; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(142, 245, 138, .25); }
+#btLogLines { display: block; }
+.terminal-progress { display: block; font: 600 11px/1.7 var(--mono); white-space: pre; }
+.terminal-progress[hidden] { display: none; }
+
+/* Segmented meter: dim segments behind, lit segments clipped to --level. */
 .meter {
   position: relative;
-  height: 18px;
-  background: var(--ink);
-  border: 2px solid var(--ink);
-  border-radius: 3px;
+  height: 16px;
+  background: #050607;
+  border-radius: 4px;
   overflow: hidden;
   --seg: repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 11px);
 }
@@ -986,107 +745,73 @@ button.icon:active:not(:disabled) { --cap-top: 4px; --cap-bottom: 3px; padding: 
   -webkit-mask: var(--seg);
   mask: var(--seg);
 }
-.meter::before { background: #2e2b28; }
+.meter::before { background: #1f2422; }
 .meter > div {
   width: auto !important;
-  background: linear-gradient(90deg, #57e389 0 62%, var(--amber) 62% 85%, var(--red) 85%);
+  background: linear-gradient(90deg, var(--crt) 0 80%, var(--amber) 80% 92%, var(--red) 92%);
   clip-path: inset(0 calc(100% - var(--level, 0%)) 0 0);
   transition: clip-path .25s;
 }
 .meter.over > div { background: var(--red); }
-pre.lcd {
-  margin: 16px 0 0;
-  padding: 14px 16px;
-  height: 240px; /* fixed: long logs scroll inside instead of growing the page */
-  overflow: auto;
-  white-space: pre-wrap;
-  font-size: 13px;
-  line-height: 1.6;
-  background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, .25) 0 1px, transparent 1px 3px);
-  box-shadow: inset 0 0 0 2px #000, inset 0 0 30px rgba(0, 0, 0, .8);
-}
-.terminal-status { display: block; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(255, 138, 61, .25); color: var(--lcd); text-shadow: 0 0 6px rgba(255, 138, 61, .55); }
-#btLogLines { display: block; }
-.terminal-progress { display: block; color: var(--lcd); font: 600 11px/1.7 var(--mono); white-space: pre; text-shadow: 0 0 6px rgba(255, 138, 61, .55); }
-.terminal-progress[hidden] { display: none; }
-pre.lcd.err { color: var(--lcd-err); text-shadow: 0 0 6px rgba(255, 90, 82, .6); }
 
 .deck {
   display: grid;
-  grid-template-columns: minmax(240px, 380px) 1fr;
+  grid-template-columns: minmax(240px, 360px) 1fr;
   gap: 24px;
   align-items: center;
-  margin-top: 20px;
   padding: 20px;
-  background: var(--ink);
-  border-radius: 6px;
   --p: 0;
 }
 .deck[hidden] { display: none; }
 .cassette { width: 100%; height: auto; display: block; }
-.cassette .shell { fill: #1f1e1d; stroke: #000; stroke-width: 3; }
-.cassette .sticker { fill: var(--bone); }
-.cassette .stripe.s1 { fill: var(--red); }
-.cassette .stripe.s2 { fill: var(--orange); }
-.cassette .stripe.s3 { fill: var(--amber); }
-.cassette .sticker-text { font: 600 11px var(--mono); letter-spacing: .12em; fill: var(--ink); }
-.cassette .sticker-jp { font: 12px var(--dot); fill: var(--red); }
-.cassette .window { fill: #0c0c0c; stroke: #000; stroke-width: 2; }
-.cassette .pack { fill: #3b2a21; transform-box: fill-box; transform-origin: center; transition: transform .4s; }
+.cassette .shell { fill: #1c1e22; stroke: #000; stroke-width: 3; }
+.cassette .sticker { fill: #2a2d33; }
+.cassette .stripe.s1 { fill: var(--crt); }
+.cassette .stripe.s2 { fill: rgba(142, 245, 138, .55); }
+.cassette .stripe.s3 { fill: rgba(142, 245, 138, .25); }
+.cassette .sticker-text { font: 600 11px var(--mono); letter-spacing: .12em; fill: var(--text); }
+.cassette .window { fill: #08090a; stroke: #000; stroke-width: 2; }
+.cassette .pack { fill: #2e2a26; transform-box: fill-box; transform-origin: center; transition: transform .4s; }
 /* Tape moves from the supply reel (left) to the take-up reel (right) as --p goes 0 → 1. */
 .cassette .pack.left { transform: scale(calc(.4 + .6 * (1 - var(--p)))); }
 .cassette .pack.right { transform: scale(calc(.4 + .6 * var(--p))); }
 .cassette .reel { transform-box: fill-box; transform-origin: center; }
-.cassette .reel circle { fill: var(--bone); stroke: #000; stroke-width: 2; }
+.cassette .reel circle { fill: var(--text); stroke: #000; stroke-width: 2; }
 .cassette .reel path { stroke: #000; stroke-width: 4; stroke-linecap: round; }
 .deck.running .reel { animation: spin 1.4s linear infinite; }
 @keyframes spin { to { transform: rotate(-360deg); } }
-.cassette .bottom { fill: #161514; stroke: #000; stroke-width: 2; }
-.cassette .hole { fill: #0b0b0c; }
+.cassette .bottom { fill: #141518; stroke: #000; stroke-width: 2; }
+.cassette .hole { fill: var(--void); }
 .deck-side { display: grid; gap: 10px; }
-.lcd-label { margin: 0; font: 600 10px var(--mono); letter-spacing: .25em; text-transform: uppercase; color: #8f887a; }
-.lcd.counter { margin: 0; padding: 12px 14px; font-size: 18px; min-height: 52px; box-shadow: inset 0 0 0 2px #000; }
-.deck .meter { border-color: #000; }
+.lcd.counter { margin: 0; padding: 12px 14px; font-size: 18px; min-height: 52px; }
 
 /* ---------- troubleshooting ---------- */
-details { margin-top: 22px; border-top: 2px solid var(--ink); padding-top: 12px; }
-summary { cursor: pointer; font: 700 12px var(--mono); letter-spacing: .18em; text-transform: uppercase; }
-summary::marker { color: var(--red); }
-dl { margin: 8px 0 0; }
-dt { font-weight: 700; margin-top: 12px; }
-dd { margin: 3px 0 0; color: var(--ink-2); }
+details { border-top: 1px solid var(--line); padding-top: 14px; }
+summary { cursor: pointer; color: var(--text); }
+summary::marker { color: var(--crt); }
+details dl { margin: 8px 0 0; }
+details dt { font-weight: 700; margin-top: 12px; }
+details dd { margin: 3px 0 0; color: var(--dim); }
 dd button { margin: 4px 4px 4px 0; }
 
-/* ---------- underside ---------- */
-.underside {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 0 32px 40px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  font: 11px var(--mono);
-  letter-spacing: .08em;
-  color: #7d776c;
-}
+.underside { padding-bottom: 40px; font: 11px var(--mono); letter-spacing: .08em; color: var(--faint); }
 .underside p { margin: 0; }
-.barcode { width: 120px; height: 30px; background: repeating-linear-gradient(90deg, #7d776c 0 2px, transparent 2px 4px, #7d776c 4px 5px, transparent 5px 8px, #7d776c 8px 11px, transparent 11px 12px); }
 
+@media (max-width: 900px) {
+  .masthead { grid-template-columns: 1fr; }
+  .specs { grid-auto-flow: column; justify-content: start; gap: 4px 28px; }
+}
 @media (max-width: 760px) {
-  .faceplate { padding: 24px 14px 0; }
-  .poster { padding: 20px 18px 0; }
-  .slab { right: -18px; }
-  .cans { display: none; }
-  .foot { margin: 0 -18px; padding: 10px 18px 12px; }
-  main { padding: 24px 14px 32px; }
-  .body { padding: 18px 16px 20px; }
-  .label { grid-template-columns: auto 1fr auto; }
-  .code { display: none; }
-  .columns, .deck, .top-row { grid-template-columns: 1fr; }
+  .masthead, main, .underside { padding-left: 14px; padding-right: 14px; }
+  .unit-head { padding: 14px 16px; }
+  .unit-body { padding: 16px; }
+  .hint { text-align: left; }
+  .columns, .deck { grid-template-columns: 1fr; }
+  .transport { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stereo { grid-template-columns: 1fr; --dot: 5px; }
   .seg { order: -1; }
-  .module { overflow-x: auto; }
+  .vfd { flex-basis: 100%; }
+  .specs { grid-auto-flow: row; }
 }
 /* Small screens: each record stacks into two lines instead of scrolling sideways.
    Number, prompt, size on top; stock play, replacement select, replacement play below. */
@@ -1123,7 +848,7 @@ dd button { margin: 4px 4px 4px 0; }
   .screen-stat { justify-self: start; font-size: 14px; }
 }
 @media (max-width: 480px) {
-  .transport-control { width: 100%; }
+  .transport { grid-template-columns: 1fr; }
   .terminal-progress { font-size: 10px; }
 }
 @media (prefers-reduced-motion: reduce) {

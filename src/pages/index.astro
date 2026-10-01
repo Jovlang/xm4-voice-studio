@@ -4,16 +4,10 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/600.css";
 import "@fontsource/dotgothic16/400.css";
 import "@fontsource/arvo/700.css";
-import "@fontsource/instrument-serif/400.css";
 import dsegUrl from "dseg/fonts/DSEG14-Classic/DSEG14Classic-Regular.woff2?url";
 import "../styles/global.css";
 import { asset } from "../lib/base";
 
-/** Cassette-label header for each step: English title and katakana subtitle. */
-const steps = {
-  prompts: { title: "Voice prompts", jp: "ボイスガイダンス", code: "VG-54" },
-  install: { title: "Install on headphones", jp: "インストール", code: "FOTA" },
-};
 /** "It's a Sony" dot mark: 7 rows of dots growing left to right, row lengths as on the original. */
 const markRadii = [7, 10, 12, 13, 14.5, 15, 15.5];
 const markDots = [6, 5, 5, 6, 7, 7, 6].flatMap((len, row) =>
@@ -36,60 +30,53 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
   <style is:inline set:html={segFont}></style>
 </head>
 <body>
-  <header class="faceplate">
-    <div class="poster">
-      <span class="mark" aria-hidden="true">
-        <svg viewBox="0 0 245 245">{markDots.map(([cx, cy, r]) => <circle cx={cx} cy={cy} r={r} />)}</svg>
-        <b>XM4</b>
-      </span>
-      <div class="copy">
-        <span class="slab" aria-hidden="true"></span>
-        <img class="cans" src={asset("xm4-headphones.webp")} alt="" width="363" height="735" />
-        <p class="kicker">High fidelity Stereo Headphones</p>
-        <span class="rule" aria-hidden="true"></span>
-        <p class="headline">Now the difference is perfectly clear.</p>
-        <h1 class="model">WH-1000XM4</h1>
-      </div>
-      <div class="foot">
-        <p class="tagline">Swap the voice prompts on your Sony WH-1000XM4 for your own sounds. Everything runs in your browser.</p>
-        <dl class="specs">
-          <div><dt>Format</dt><dd>48 kHz · Mono · MP3</dd></div>
-          <div><dt>Slots</dt><dd>54 tracks</dd></div>
-          <div><dt>Link</dt><dd>RFCOMM</dd></div>
-        </dl>
+  <header class="masthead">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 245 245" aria-hidden="true">{markDots.map(([cx, cy, r]) => <circle cx={cx} cy={cy} r={r} />)}</svg>
+      <div>
+        <p class="kicker">WH-1000XM4 · Voice prompt editor</p>
+        <h1>XM4 Voice Studio</h1>
       </div>
     </div>
+    <p class="tagline">Swap the voice prompts on your Sony WH-1000XM4 for your own sounds. Everything runs in your browser.</p>
+    <dl class="specs">
+      <div><dt>Format</dt><dd>48 kHz · Mono · MP3</dd></div>
+      <div><dt>Slots</dt><dd>54 tracks</dd></div>
+      <div><dt>Link</dt><dd>RFCOMM</dd></div>
+    </dl>
   </header>
 
   <main>
-    <section class="module">
-      <div class="body">
-        <div class="row top-row">
-          <label class="field">Base language · what unchanged prompts say
-            <select id="source"></select>
-          </label>
-          <!-- Your sounds: a cassette-deck door that cracks open on hover; clicking fades in the tape bay. -->
-          <div id="dock" class="dock" tabindex="0" aria-label="Your sounds">
-            <div class="dock-door" aria-hidden="true">
-              <span class="door-face">
-                <span class="door-title"><span class="tick">A</span>Your sounds <span class="jp">カセット</span></span>
-                <span class="door-window"><span id="soundCount">0 tapes</span></span>
-                <span class="door-eject">▲ Eject</span>
-              </span>
-            </div>
-            <div class="dock-bay">
-              <div class="bay-head">
-                <span class="door-title"><span class="tick">A</span>Your sounds <span class="jp">カセット</span></span>
-                <span id="bayCount" class="bay-count">0 tapes</span>
-                <div class="bay-keys">
-                  <button id="soundAdd" class="primary">+ Add sounds</button>
-                  <button id="dockClose" aria-label="Close your sounds">Close</button>
-                </div>
+    <section class="unit">
+      <div class="unit-head">
+        <h2><span class="num">01</span>Voice prompts</h2>
+        <label class="field">Base language
+          <select id="source" aria-describedby="sourceHint"></select>
+        </label>
+        <p id="sourceHint" class="hint">What unchanged prompts say</p>
+      </div>
+      <div class="unit-body">
+        <!-- Your sounds: a cassette-deck door that cracks open on hover; clicking fades in the tape bay. -->
+        <div id="dock" class="dock" tabindex="0" aria-label="Your sounds">
+          <div class="dock-door" aria-hidden="true">
+            <span class="door-face">
+              <span class="door-title">Your sounds</span>
+              <span class="door-window"><span id="soundCount">0 tapes</span></span>
+              <span class="door-eject">▲ Eject</span>
+            </span>
+          </div>
+          <div class="dock-bay">
+            <div class="panel-head">
+              <h3>Your sounds</h3>
+              <span id="bayCount" class="count">0 tapes</span>
+              <div class="bay-keys">
+                <button id="soundAdd" class="primary">+ Add sounds</button>
+                <button id="dockClose" aria-label="Close your sounds">Close</button>
               </div>
-              <div id="soundDrop" class="drop">Drop audio or video files here or <u>click to choose</u>. They're converted to 48 kHz mono MP3, so keep them short.</div>
-              <input id="soundFile" type="file" accept="audio/*,video/*" multiple hidden />
-              <div id="sounds" class="tapes"></div>
             </div>
+            <div id="soundDrop" class="drop">Drop audio or video files here or <u>click to choose</u>. They're converted to 48 kHz mono MP3, so keep them short.</div>
+            <input id="soundFile" type="file" accept="audio/*,video/*" multiple hidden />
+            <div id="sounds" class="tapes"></div>
           </div>
         </div>
         <div id="sonyManual" class="alert" hidden>
@@ -101,7 +88,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
           <div id="sonyDrop" class="drop">Drop the downloaded <code>.bin</code> here or <u>click to choose</u></div>
           <input id="sonyFile" type="file" multiple hidden />
         </div>
-        <div class="rack">
+        <div class="bezel rack">
           <div id="eq" class="stereo" aria-hidden="true">
             {["L", "R"].map((ch) => (
               <div class={`bank bank-${ch}`}>
@@ -136,7 +123,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
           </div>
         </div>
         <!-- Prompt assignments: a green bounty-terminal screen set into a dark frame. -->
-        <div class="terminal">
+        <div class="bezel terminal">
           <div class="screen">
             <div class="screen-window">
               <div id="slotList" class="screen-list" tabindex="0" aria-label="Prompts">
@@ -160,19 +147,22 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
       </div>
     </section>
 
-    <section class="module">
-      <div class="body">
+    <section class="unit">
+      <div class="unit-head">
+        <h2><span class="num">02</span>Install on headphones</h2>
+      </div>
+      <div class="unit-body">
         <p id="btUnsupported" class="err" hidden>This browser can't open Bluetooth serial connections. Use current desktop Chrome or Edge.</p>
         <div class="columns">
           <div>
-            <h3><span class="tick">A</span>Before you start</h3>
+            <h3>Before you start</h3>
             <ul class="checks">
               <li>Headphones paired with <b>this computer</b> in its Bluetooth settings, and disconnected from your phone.</li>
               <li>Battery at least 50%. It stops on its own below that.</li>
             </ul>
           </div>
           <div>
-            <h3><span class="tick">B</span>Install</h3>
+            <h3>Install</h3>
             <ol class="steps">
               <li>Click <b>Control channel</b>, then <b>Update channel</b>; choose <b>WH-1000XM4</b> each time.</li>
               <li>Optional: <b>Check</b> tests without installing.</li>
@@ -181,7 +171,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
             </ol>
           </div>
         </div>
-        <div class="rack">
+        <div class="bezel">
           <div class="transport">
             <div class="transport-control" data-status="off"><button id="btMdr" class="key">Control channel</button><span class="transport-led" aria-hidden="true"></span></div>
             <div class="transport-control" data-status="off"><button id="btRace" class="key">Update channel</button><span class="transport-led" aria-hidden="true"></span></div>
@@ -189,7 +179,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
             <div class="transport-control" data-status="off"><button id="btInstall" class="key primary" aria-label="Install on headphones" disabled>Install</button><span class="transport-led" aria-hidden="true"></span></div>
           </div>
         </div>
-        <div id="btProgress" class="deck" hidden>
+        <div id="btProgress" class="bezel deck" hidden>
           <svg class="cassette" viewBox="0 0 360 228" role="img" aria-label="Transfer progress">
             <rect class="shell" x="4" y="4" width="352" height="220" rx="14" />
             <rect class="sticker" x="22" y="20" width="316" height="130" rx="6" />
@@ -197,7 +187,6 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
             <rect class="stripe s2" x="22" y="47" width="316" height="7" />
             <rect class="stripe s3" x="22" y="54" width="316" height="7" />
             <text class="sticker-text" x="34" y="33">XM4 VOICE STUDIO · SIDE A</text>
-            <text class="sticker-jp" x="326" y="33" text-anchor="end">ボイス</text>
             <rect class="window" x="92" y="74" width="176" height="64" rx="32" />
             <clipPath id="tapeWindow"><rect x="92" y="74" width="176" height="64" rx="32" /></clipPath>
             <g clip-path="url(#tapeWindow)">
@@ -211,12 +200,12 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
             <circle class="hole" cx="242" cy="200" r="7" />
           </svg>
           <div class="deck-side">
-            <p class="lcd-label">Tape counter</p>
+            <p class="label">Tape counter</p>
             <p id="btStatus" class="lcd counter"></p>
             <div id="btBar" class="meter"><div></div></div>
           </div>
         </div>
-        <pre id="btLog" class="lcd"><span id="btConnectionStatus" class="terminal-status" aria-live="polite"></span><span id="btLogLines"></span><span id="btTerminalProgress" class="terminal-progress" role="progressbar" aria-label="Voice pack transfer" aria-valuemin="0" aria-valuemax="100" hidden></span></pre>
+        <div class="bezel log"><pre id="btLog" class="lcd"><span id="btConnectionStatus" class="terminal-status" aria-live="polite"></span><span id="btLogLines"></span><span id="btTerminalProgress" class="terminal-progress" role="progressbar" aria-label="Voice pack transfer" aria-valuemin="0" aria-valuemax="100" hidden></span></pre></div>
         <details>
           <summary>Troubleshooting and undo</summary>
           <dl>
@@ -235,9 +224,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
   </main>
 
   <footer class="underside">
-    <span class="barcode" aria-hidden="true"></span>
     <p>Not affiliated with Sony. Modifying your headphones is at your own risk.</p>
-    <p class="jp">非公式 · ブラウザ製</p>
   </footer>
   <audio id="preview" preload="none" hidden></audio>
   <script src="../scripts/app.ts"></script>
