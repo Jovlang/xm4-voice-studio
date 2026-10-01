@@ -6,6 +6,7 @@ import "@fontsource/dotgothic16/400.css";
 import "@fontsource/arvo/700.css";
 import dsegUrl from "dseg/fonts/DSEG14-Classic/DSEG14Classic-Regular.woff2?url";
 import "../styles/global.css";
+import { siCodeberg, siKofi, siReddit } from "simple-icons";
 import { asset } from "../lib/base";
 
 /** "It's a Sony" dot mark: 7 rows of dots growing left to right, row lengths as on the original. */
@@ -13,6 +14,13 @@ const markRadii = [7, 10, 12, 13, 14.5, 15, 15.5];
 const markDots = [6, 5, 5, 6, 7, 7, 6].flatMap((len, row) =>
   markRadii.slice(0, len).map((r, col) => [17.5 + col * 35, 17.5 + row * 35, r]),
 );
+const links = [
+  { href: "https://codeberg.org/SadsArches/xm4-voice-studio", label: "Source on Codeberg", icon: siCodeberg },
+  { href: "https://www.reddit.com/user/SadsArches/", label: "Reddit", icon: siReddit },
+  { href: "https://ko-fi.com/sadsarches", label: "Support on Ko-fi", icon: siKofi },
+];
+// Google Analytics, only on the built site so local dev visits aren't counted.
+const GA_ID = import.meta.env.PROD ? "G-NCEJE571LW" : undefined;
 const bands = ["63", "160", "400", "1k", "2.5k", "6.3k", "16k"];
 const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") format("woff2"); font-display: block; }`;
 ---
@@ -28,6 +36,8 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
   <title>XM4 Voice Studio</title>
   <meta name="description" content="Create custom voice prompts for Sony WH-1000XM4 headphones." />
   <style is:inline set:html={segFont}></style>
+  {GA_ID && <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}></script>}
+  {GA_ID && <script is:inline set:html={`window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments); } gtag("js", new Date()); gtag("config", "${GA_ID}");`}></script>}
 </head>
 <body>
   <header class="masthead">
@@ -227,6 +237,11 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
 
   <footer class="underside">
     <p>Not affiliated with Sony. Modifying your headphones is at your own risk.</p>
+    <nav class="links" aria-label="Elsewhere">
+      {links.map(({ href, label, icon }) => (
+        <a href={href} target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d={icon.path} /></svg>{label}</a>
+      ))}
+    </nav>
   </footer>
   <audio id="preview" preload="none" hidden></audio>
   <script src="../scripts/app.ts"></script>

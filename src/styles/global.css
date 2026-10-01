@@ -842,7 +842,12 @@ details dd { margin: 3px 0 0; color: var(--dim); }
 dd button { margin: 4px 4px 4px 0; }
 
 .underside { padding-bottom: 40px; font: 11px var(--mono); letter-spacing: .08em; color: var(--faint); }
+.underside { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 24px; }
 .underside p { margin: 0; }
+.links { display: flex; flex-wrap: wrap; gap: 6px 20px; text-transform: uppercase; }
+.links a { display: inline-flex; align-items: center; gap: 7px; color: var(--dim); text-decoration: none; }
+.links svg { width: 14px; height: 14px; fill: currentColor; }
+.links a:hover, .links a:focus-visible { color: var(--crt); text-shadow: 0 0 6px rgba(142, 245, 138, .5); }
 
 @media (max-width: 900px) {
   .masthead { grid-template-columns: 1fr; }
