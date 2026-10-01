@@ -699,20 +699,38 @@ code { font: 13px var(--mono); background: var(--bezel); color: var(--text); pad
   border-top: 1px solid var(--crt-line);
 }
 .tabs { display: flex; flex-wrap: wrap; gap: 10px; }
-/* Share link: a read-only field in the screen's green with its copy key alongside. */
-.share { grid-column: 1 / -1; display: flex; gap: 10px; }
+/* Share popout: a fixed-size window centred on the green screen, in the list's lettering.
+   Rows: message, link field (space kept even when empty), keys. */
+.share {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: 1fr 34px auto;
+  gap: 14px;
+  width: min(560px, calc(100% - 32px));
+  height: 230px;
+  margin: auto;
+  padding: 18px 20px;
+  background: radial-gradient(120% 140% at 50% 40%, #0f2418 0%, #08140d 70%, #040a06 100%);
+  border: 4px solid var(--crt-line);
+  box-shadow: 0 0 0 4px #040a06, 0 0 28px rgba(142, 245, 138, .25), 0 18px 60px rgba(0, 0, 0, .8);
+}
 .share[hidden] { display: none; }
+.share-msg { grid-row: 1; margin: 0; overflow: auto; line-height: 1.35; }
+.share-msg.processing::after { content: "▮"; margin-left: 6px; animation: blink 1s steps(1) infinite; }
 .share input {
-  flex: 1;
+  grid-row: 2;
   min-width: 0;
-  padding: 6px 10px;
+  padding: 0 10px;
   font: 13px var(--mono);
   color: var(--crt-hot);
   background: rgba(0, 0, 0, .35);
-  border: 1px solid var(--crt-line);
+  border: 2px solid var(--crt-line);
   border-radius: 0;
 }
 .share input:focus-visible { outline: 2px solid var(--crt-hot); outline-offset: 2px; }
+.share-keys { grid-row: 3; display: flex; justify-content: flex-end; gap: 10px; }
 /* "THREAT LEVEL: 7": big caps with the figure in cyan. */
 .screen-stat { justify-self: end; font-size: 17px; letter-spacing: .03em; }
 .screen-stat:empty { display: none; }

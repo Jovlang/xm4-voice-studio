@@ -375,46 +375,85 @@ async function ensureBuilt(): Promise<Uint8Array> {
 // ---------- sharing ----------
 
 const shareKey = () => JSON.stringify([state.source, state.assignments]);
-/** The choices the link in the share box points to; the box hides once they change. */
-let sharedKey = "";
+/** The choices the share popout is about; it closes once they change. */
+let shareFor: string | undefined;
 
 function renderShare() {
   $<HTMLButtonElement>("share").disabled = !Object.keys(state.assignments).length;
-  $("shareBox").hidden = sharedKey !== shareKey();
+  if (shareFor !== undefined && shareFor !== shareKey()) closeShare();
 }
 
-/** Upload your prompt choices (and the tapes of yours they use) and show a link that opens them. */
-async function sharePack() {
-  const ids = [...new Set(Object.values(state.assignments))];
-  const custom = state.sounds.filter((s) => s.kind === "custom" && ids.includes(s.id));
-  const what = custom.length ? `your ${custom.length} sound${custom.length === 1 ? "" : "s"} and prompt choices` : "your prompt choices";
-  if (!confirm(`Upload ${what} to get a share link?\n\nAnyone with the link can download them.`)) return;
-  const button = $<HTMLButtonElement>("share");
-  button.disabled = true;
-  button.textContent = "Uploading…";
+type ShareAction = [label: string, run: () => void];
+
+/** Show a message in the share popout (never an alert), with an optional link field and keys. */
+function sharePanel(msg: string, opts: { link?: string; busy?: boolean; actions?: ShareAction[] } = {}) {
+  const box = $("shareBox");
+  box.hidden = false;
+  box.replaceChildren(el("p", { className: "share-msg" + (opts.busy ? " processing" : ""), textContent: `:: ${msg}` }));
+  if (opts.link) box.append(el("input", { value: opts.link, readOnly: true, ariaLabel: "Share link", onfocus: (e: FocusEvent) => (e.target as HTMLInputElement).select() }));
+  box.append(el("div", { className: "share-keys" }, ...(opts.actions ?? []).map(([label, run]) => el("button", { textContent: label, onclick: run }))));
+  shareFor = shareKey();
+}
+
+function closeShare() {
+  $("shareBox").hidden = true;
+  shareFor = undefined;
+}
+
+/**
+ * Copy text that may still be on its way. Starting the write inside the click keeps the browser's
+ * user-gesture permission even though the link only exists once the upload finishes.
+ */
+async function copyText(text: Promise<string>): Promise<boolean> {
   try {
-    const key = shareKey();
-    const sounds: SharedPack["sounds"] = {};
-    for (const s of custom) sounds[s.name] = await soundBytes(s);
-    const id = await uploadPack({ source: state.source, assignments: state.assignments, sounds });
-    $<HTMLInputElement>("shareLink").value = shareLink(id);
-    sharedKey = key;
-  } catch (e) {
-    alert(`Couldn't share your pack: ${errMsg(e)}`);
-  } finally {
-    button.textContent = "Share pack";
-    renderShare();
+    await navigator.clipboard.write([new ClipboardItem({ "text/plain": text.then((t) => new Blob([t], { type: "text/plain" })) })]);
+    return true;
+  } catch {
+    try {
+      await navigator.clipboard.writeText(await text);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
-async function copyShareLink() {
-  const input = $<HTMLInputElement>("shareLink");
+/** Ask before uploading: the pack becomes public to anyone with the link. */
+function sharePack() {
+  const ids = new Set(Object.values(state.assignments));
+  const n = state.sounds.filter((s) => s.kind === "custom" && ids.has(s.id)).length;
+  const what = n ? `your ${n} sound${n === 1 ? "" : "s"} and prompt choices` : "your prompt choices";
+  sharePanel(`Upload ${what}? Anyone with the link can download them.`, {
+    actions: [["Upload", () => void uploadShare()], ["Cancel", closeShare]],
+  });
+}
+
+/** Upload your prompt choices (and the tapes of yours they use) and copy a link that opens them. */
+async function uploadShare() {
+  const key = shareKey();
+  const ids = new Set(Object.values(state.assignments));
+  const custom = state.sounds.filter((s) => s.kind === "custom" && ids.has(s.id));
+  const pack = { source: state.source, assignments: { ...state.assignments } };
+  const link = (async () => {
+    const sounds: SharedPack["sounds"] = {};
+    for (const s of custom) sounds[s.name] = await soundBytes(s);
+    return shareLink(await uploadPack({ ...pack, sounds }));
+  })();
+  const copied = copyText(link);
+  $<HTMLButtonElement>("share").disabled = true;
+  sharePanel("Uploading pack", { busy: true });
   try {
-    await navigator.clipboard.writeText(input.value);
-    $("shareCopy").textContent = "Copied";
-    setTimeout(() => ($("shareCopy").textContent = "Copy link"), 1500);
-  } catch {
-    input.select(); // clipboard blocked: leave it selected for Ctrl+C
+    const url = await link;
+    const show = (ok: boolean) => sharePanel(ok ? "Link copied to clipboard" : "Pack uploaded. Copy the link below", {
+      link: url,
+      actions: [["Copy link", () => void copyText(Promise.resolve(url)).then(show)], ["Close", closeShare]],
+    });
+    show(await copied);
+  } catch (e) {
+    sharePanel(`✗ Couldn't upload: ${errMsg(e)}`, { actions: [["Try again", () => void uploadShare()], ["Close", closeShare]] });
+  } finally {
+    shareFor = key;
+    renderShare();
   }
 }
 
@@ -423,16 +462,24 @@ async function importLinkedPack() {
   const id = linkedPackId();
   if (!id || !shareEnabled) return;
   history.replaceState(null, "", location.pathname + location.search); // reloading shouldn't import it again
+  sharePanel("Opening shared pack", { busy: true });
+  $("shareBox").scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   let pack: SharedPack;
   try {
     pack = await downloadPack(id);
   } catch (e) {
-    alert(`Couldn't open the shared pack: ${errMsg(e)}`);
+    sharePanel(`✗ Couldn't open the shared pack: ${errMsg(e)}`, { actions: [["Close", closeShare]] });
     return;
   }
   const n = Object.keys(pack.assignments).length;
-  if (Object.keys(state.assignments).length &&
-      !confirm(`Open the shared pack? It changes ${n} prompt${n === 1 ? "" : "s"} and replaces your current choices. Its sounds are added to your tapes.`)) return;
+  const prompts = `${n} prompt${n === 1 ? "" : "s"}`;
+  if (Object.keys(state.assignments).length) {
+    const open = await new Promise<boolean>((resolve) => sharePanel(
+      `Open the shared pack? It changes ${prompts} and replaces your current choices. Its sounds are added to your tapes.`,
+      { actions: [["Open", () => resolve(true)], ["Cancel", () => resolve(false)]] },
+    ));
+    if (!open) return closeShare();
+  }
 
   // Keep the sender's names; reuse an identical tape you already have, otherwise pick a free name.
   const same = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((x, i) => x === b[i]);
@@ -456,6 +503,7 @@ async function importLinkedPack() {
   state.built = undefined;
   save();
   await loadSounds();
+  sharePanel(`Opened shared pack: ${prompts} changed`, { actions: [["Close", closeShare]] });
 }
 
 // ---------- direct Bluetooth install ----------
@@ -692,7 +740,6 @@ $("reset").onclick = () => {
 };
 $("share").hidden = !shareEnabled;
 $("share").onclick = () => void sharePack();
-$("shareCopy").onclick = () => void copyShareLink();
 // A share link pasted into this tab only changes the hash.
 addEventListener("hashchange", () => void importLinkedPack().then(loadSourcePack));
 $("btMdr").onclick = () => void connectBluetooth("mdr");

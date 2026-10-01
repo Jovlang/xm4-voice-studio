@@ -74,7 +74,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
                 <button id="dockClose" aria-label="Close your sounds">Close</button>
               </div>
             </div>
-            <div id="soundDrop" class="drop">Drop audio or video files here or <u>click to choose</u>. They're converted to 48 kHz mono MP3, so keep them short.</div>
+            <div id="soundDrop" class="drop">Drop audio or video files here or <u>click to choose</u>. They're converted to 48 kHz mono MP3 and silence at the start and end is cut, so keep them short.</div>
             <input id="soundFile" type="file" accept="audio/*,video/*" multiple hidden />
             <div id="sounds" class="tapes"></div>
           </div>
@@ -142,11 +142,8 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
               </div>
               <span id="capText" class="screen-stat" tabindex="-1"></span>
               <div id="cap" class="meter" aria-hidden="true"><div></div></div>
-              <div id="shareBox" class="share" hidden>
-                <input id="shareLink" readonly aria-label="Share link" />
-                <button id="shareCopy">Copy link</button>
-              </div>
             </div>
+            <div id="shareBox" class="share" role="dialog" aria-label="Share pack" aria-live="polite" hidden></div>
           </div>
         </div>
       </div>

@@ -1,10 +1,26 @@
 // Browser replacement for `ffmpeg -ar 48000 -ac 1 -b:a 64k`: decode anything the browser
-// can play, downmix + resample to 48 kHz mono, encode 64 kbps MP3 (raw frames, no ID3/Xing).
+// can play, downmix + resample to 48 kHz mono, trim silence off the ends, encode 64 kbps MP3
+// (raw frames, no ID3/Xing).
 import { Mp3Encoder } from "@breezystack/lamejs";
 
 const RATE = 48000;
 const KBPS = 64;
 const FRAME = 1152;
+// Dead air is anything quieter than -50 dBFS. A little of it is kept on each side so attacks and
+// decays aren't clipped.
+const SILENCE = 10 ** (-50 / 20);
+const PAD_START = Math.round(0.02 * RATE);
+const PAD_END = Math.round(0.05 * RATE);
+
+/** Cut the silence off both ends of a clip. An all-silent clip is returned as is. */
+export function trimSilence(pcm: Float32Array): Float32Array {
+  let first = 0;
+  while (first < pcm.length && Math.abs(pcm[first]) <= SILENCE) first++;
+  if (first === pcm.length) return pcm;
+  let last = pcm.length - 1;
+  while (Math.abs(pcm[last]) <= SILENCE) last--;
+  return pcm.subarray(Math.max(0, first - PAD_START), Math.min(pcm.length, last + 1 + PAD_END));
+}
 
 export async function toSlotMp3(file: Blob): Promise<Uint8Array> {
   const decoded = await new AudioContext().decodeAudioData(await file.arrayBuffer());
@@ -14,7 +30,7 @@ export async function toSlotMp3(file: Blob): Promise<Uint8Array> {
   src.buffer = decoded; // a mono destination downmixes automatically
   src.connect(ctx.destination);
   src.start();
-  const pcm = (await ctx.startRendering()).getChannelData(0);
+  const pcm = trimSilence((await ctx.startRendering()).getChannelData(0));
 
   const samples = new Int16Array(pcm.length);
   for (let i = 0; i < pcm.length; i++) {
