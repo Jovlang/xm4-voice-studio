@@ -1,7 +1,7 @@
 import { mp3Seconds, toSlotMp3 } from "../lib/audio";
 import { asset } from "../lib/base";
-import { LANG_NAMES, packPath, packUrl, mirrorUrl } from "../lib/manifest";
-import { downloadPack, linkedPackId, shareEnabled, shareLink, uploadPack, type SharedPack } from "../lib/share";
+import { LANG_NAMES, langNumber, langOfFile, packFileName, packPath, packUrl, mirrorUrl } from "../lib/manifest";
+import { downloadPack, linkedPackId, shareEnabled, shareLink, unzipPack, uploadPack, type SharedPack } from "../lib/share";
 import * as store from "../lib/store";
 import { buildPack, IMAGE_SIZE, imageOverhead, isVoicePack, loadPack, SLOT_LABELS, type VoicePack } from "../lib/voicepack";
 import { CommitUnconfirmedError, Xm4DirectUpdater, type InstallOptions } from "../lib/xm4-fota";
@@ -28,6 +28,8 @@ const state = {
   showAll: !!saved.showAll,
   /** Library tapes the user removed (they ship with the site, so they're hidden, not deleted). */
   hiddenLibrary: (saved.hiddenLibrary as string[]) || [],
+  /** Last #pack=<id> opened; the link stays in the address bar, so reloading mustn't open it again. */
+  openedPack: saved.openedPack as string | undefined,
   sounds: [] as Sound[],
   pack: undefined as VoicePack | undefined,
   built: undefined as Uint8Array | undefined,
@@ -48,12 +50,11 @@ const audio = $<HTMLAudioElement>("preview");
 const eq = new StereoEq($("eq"), audio, { text: $("vfdText"), time: $("eqTime") });
 
 function save() {
-  const { source, assignments, showAll, hiddenLibrary } = state;
-  localStorage.setItem("xm4", JSON.stringify({ source, assignments, showAll, hiddenLibrary }));
+  const { source, assignments, showAll, hiddenLibrary, openedPack } = state;
+  localStorage.setItem("xm4", JSON.stringify({ source, assignments, showAll, hiddenLibrary, openedPack }));
 }
 const errMsg = (e: unknown) => (e as Error).message;
 const kb = (n: number) => (n / 1024).toFixed(1) + " KB";
-const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Record<string, unknown> = {}, ...kids: (Node | string | null)[]): HTMLElementTagNameMap[K] {
   const e = Object.assign(document.createElement(tag), props);
   e.append(...kids.filter((k): k is Node | string => k != null));
@@ -118,7 +119,8 @@ function dropZone(zone: HTMLElement, input: HTMLInputElement, onFiles: (f: File[
 
 function initLanguages() {
   const sel = $<HTMLSelectElement>("source");
-  for (const [code, name] of Object.entries(LANG_NAMES).sort()) sel.append(el("option", { value: code, textContent: cap(name) }));
+  const byName = Object.entries(LANG_NAMES).sort(([, a], [, b]) => a.localeCompare(b));
+  for (const [code, name] of byName) sel.append(el("option", { value: code, textContent: name }));
   sel.value = state.source;
   sel.onchange = () => {
     state.source = sel.value;
@@ -169,10 +171,10 @@ function renderSony() {
   const name = LANG_NAMES[state.source];
   const link = $<HTMLAnchorElement>("packLink");
   link.href = packUrl(state.source);
-  link.textContent = `VP_${name}_UPG_03.bin`;
-  for (const el of document.querySelectorAll(".sourceName")) el.textContent = cap(name);
+  link.textContent = packFileName(state.source);
+  for (const el of document.querySelectorAll(".sourceName")) el.textContent = name;
   // Only a warning in step 1 when the automatic download fails.
-  $("sonySummary").textContent = `⚠ Couldn't download Sony's ${cap(name)} voice pack automatically.`;
+  $("sonySummary").textContent = `⚠ Couldn't download Sony's ${name} voice pack automatically.`;
   $("sonyManual").hidden = state.sonyLoading || !!state.pack;
   renderBluetooth();
 }
@@ -183,8 +185,7 @@ async function addSonyFiles(files: File[]) {
     const raw = new Uint8Array(await f.arrayBuffer());
     if (isVoicePack(raw)) {
       // Name the pack after its filename (VP_<lang>_UPG_03.bin); fall back to the selected base language.
-      const lang = /VP_([a-z]+)_/i.exec(f.name)?.[1]?.toLowerCase();
-      const code = Object.entries(LANG_NAMES).find(([, n]) => n === lang)?.[0] ?? state.source;
+      const code = langOfFile(f.name) ?? state.source;
       try {
         packCache.set(code, loadPack(raw));
       } catch (e) {
@@ -378,10 +379,10 @@ async function ensureBuilt(): Promise<Uint8Array> {
   if (state.built) return state.built;
   btLog("Building your voice pack…");
   await new Promise((r) => setTimeout(r, 30)); // let the UI paint before the synchronous LZMA pass
-  // The image's first word is the language code (1 = English … 10 = Turkish). Custom packs labelled
+  // The image's first word is the language code (hex: 0x01 = English … 0xF0 = Chinese). Custom packs labelled
   // English install but never play, so every custom pack goes on as Spanish, the label known to work.
-  const pack = { ...state.pack!, version: Number(INSTALL_AS) };
-  btLog(`  labelled ${cap(LANG_NAMES[INSTALL_AS])} for the headphones`);
+  const pack = { ...state.pack!, version: langNumber(INSTALL_AS) };
+  btLog(`  labelled ${LANG_NAMES[INSTALL_AS]} for the headphones`);
   const slots = [...pack.slots];
   for (const [slot, id] of Object.entries(state.assignments)) {
     const s = state.sounds.find((x) => x.id === id)!;
@@ -478,20 +479,8 @@ async function uploadShare() {
   }
 }
 
-/** Open a shared pack from #pack=<id>: its sounds become your tapes and its prompt choices replace yours. */
-async function importLinkedPack() {
-  const id = linkedPackId();
-  if (!id || !shareEnabled) return;
-  history.replaceState(null, "", location.pathname + location.search); // reloading shouldn't import it again
-  sharePanel("Opening shared pack", { busy: true });
-  $("shareBox").scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-  let pack: SharedPack;
-  try {
-    pack = await downloadPack(id);
-  } catch (e) {
-    sharePanel(`✗ Couldn't open the shared pack: ${errMsg(e)}`, { actions: [["Close", closeShare]] });
-    return;
-  }
+/** Add a shared pack's sounds and replace prompt choices. */
+async function applySharedPack(pack: SharedPack) {
   const n = Object.keys(pack.assignments).length;
   const prompts = `${n} prompt${n === 1 ? "" : "s"}`;
   if (Object.keys(state.assignments).length) {
@@ -525,6 +514,28 @@ async function importLinkedPack() {
   save();
   await loadSounds();
   sharePanel(`Opened shared pack: ${prompts} changed`, { actions: [["Close", closeShare]] });
+}
+
+/** Open a shared pack from #pack=<id>: its sounds become your tapes and its prompt choices replace yours. */
+async function importLinkedPack() {
+  const id = linkedPackId();
+  if (!id || !shareEnabled || id === state.openedPack) return;
+  sharePanel("Opening shared pack", { busy: true });
+  $("shareBox").scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  try {
+    const pack = await downloadPack(id);
+    state.openedPack = id;
+    save();
+    await applySharedPack(pack);
+  } catch (e) { sharePanel(`✗ Couldn't open the shared pack: ${errMsg(e)}`, { actions: [["Close", closeShare]] }); }
+}
+
+async function importLocalPack(file: File) {
+  try {
+    await applySharedPack(unzipPack(new Uint8Array(await file.arrayBuffer())));
+  } catch (e) {
+    sharePanel(`✗ Couldn't open ${file.name}: ${errMsg(e)}`, { actions: [["Close", closeShare]] });
+  }
 }
 
 // ---------- direct Bluetooth install ----------
@@ -770,7 +781,7 @@ async function demoInstall() {
 async function restoreStock() {
   const raw = await store.get(`pack:${state.source}`);
   if (!raw) return btLog("The stock voice pack isn't loaded. Add it in step 1 first.", "err");
-  await installBluetooth(raw, `Sony's stock ${cap(LANG_NAMES[state.source])} voice pack`);
+  await installBluetooth(raw, `Sony's stock ${LANG_NAMES[state.source]} voice pack`);
 }
 
 // ---------- init ----------
@@ -801,6 +812,12 @@ $("reset").onclick = () => {
 };
 $("share").hidden = !shareEnabled;
 $("share").onclick = () => void sharePack();
+$("importPack").onclick = () => $("packFile").click();
+$<HTMLInputElement>("packFile").onchange = (e) => {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (file) void importLocalPack(file);
+  (e.target as HTMLInputElement).value = "";
+};
 // A share link pasted into this tab only changes the hash.
 addEventListener("hashchange", () => void importLinkedPack().then(loadSourcePack));
 $("btMdr").onclick = () => void connectBluetooth("mdr");

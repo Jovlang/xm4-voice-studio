@@ -8,16 +8,35 @@ import { asset } from "./base";
 const INFO_XML_KEY = new Uint8Array([0x4f, 0xa2, 0x79, 0x99, 0xff, 0xd0, 0x8b, 0x1f, 0xe4, 0xd2, 0x60, 0xd5, 0x7b, 0x6d, 0x3c, 0x17]);
 export const MODEL = "HP002";
 
+// Language codes are hex: they're also the voice image's first word (Turkish is 0x10, Chinese 0xF0).
 export const LANG_NAMES: Record<string, string> = {
-  "01": "english", "02": "french", "03": "german", "04": "spanish", "05": "italian",
-  "06": "portuguese", "07": "dutch", "08": "swedish", "09": "finnish", "10": "turkish",
+  "01": "English", "02": "French", "03": "German", "04": "Spanish", "05": "Italian",
+  "06": "Portuguese", "07": "Dutch", "08": "Swedish", "09": "Finnish", "0A": "Russian",
+  "0B": "Japanese", "0D": "Brazilian Portuguese", "0F": "Korean", "10": "Turkish", "F0": "Chinese",
+};
+// Not every pack lives at the same path, so list each one's file under contents/.
+const PACK_FILES: Record<string, string> = {
+  "01": "0002/VP_english_UPG_03.bin", "02": "0002/VP_french_UPG_03.bin", "03": "0002/VP_german_UPG_03.bin",
+  "04": "0002/VP_spanish_UPG_03.bin", "05": "0002/VP_italian_UPG_03.bin", "06": "0002/VP_portuguese_UPG_03.bin",
+  "07": "0002/VP_dutch_UPG_03.bin", "08": "0002/VP_swedish_UPG_03.bin", "09": "0002/VP_finnish_UPG_03.bin",
+  "0A": "0002/VP_russian_UPG_03.bin", "0B": "0002/VP_japanese_UPG_03.bin",
+  "0D": "0002/VP_brazilian_portuguese_UPG_03.bin", "0F": "0004/VP_korean_UPG_04.bin",
+  "10": "0002/VP_turkish_UPG_03.bin", "F0": "0002/VP_chinese_UPG_03.bin",
 };
 export const langPackId = (code: string) => `VGIDLPB04${code}`;
+/** The language code a voice image's first word stands for. */
+export const langNumber = (code: string) => parseInt(code, 16);
+export const packFileName = (code: string) => PACK_FILES[code].split("/")[1];
+const fileLang = (name: string) => /VP_([a-z_]+?)_UPG/i.exec(name)?.[1].toLowerCase();
+/** Which language a Sony pack filename is, e.g. VP_korean_UPG_04 (1).bin → "0F". */
+export const langOfFile = (name: string) => {
+  const lang = fileLang(name);
+  return lang ? Object.keys(PACK_FILES).find((code) => fileLang(PACK_FILES[code]) === lang) : undefined;
+};
 const CDN = "https://info.update.sony.net";
 // Paths on Sony's CDN. Sony sends no CORS headers, so the site serves copies of these files itself,
 // mirrored under public/sony/ with the same paths.
-export const packPath = (code: string) =>
-  `/${MODEL}/${langPackId(code)}/contents/0002/VP_${LANG_NAMES[code]}_UPG_03.bin`;
+export const packPath = (code: string) => `/${MODEL}/${langPackId(code)}/contents/${PACK_FILES[code]}`;
 export const infoPath = (code: string) => `/${MODEL}/${langPackId(code)}/info/info.xml`;
 export const packUrl = (code: string) => CDN + packPath(code);
 export const infoUrl = (code: string) => CDN + infoPath(code);
@@ -82,12 +101,11 @@ export function forgeManifest(
   log(`Manifest: Size=${size} MAC=${mac}`);
 
   // Make the manifest look native to the target language.
-  const src = /VGIDLPB04(\d{2})/.exec(xml)?.[1];
+  const src = /VGIDLPB04([0-9A-F]{2})/.exec(xml)?.[1];
   if (!src || !LANG_NAMES[src]) throw new Error("couldn't find the source language in the manifest");
   if (!LANG_NAMES[target]) throw new Error(`unknown target language ${target}`);
   if (src !== target) {
-    xml = xml.replaceAll(`VGIDLPB04${src}`, `VGIDLPB04${target}`)
-      .replaceAll(`VP_${LANG_NAMES[src]}_`, `VP_${LANG_NAMES[target]}_`);
+    xml = xml.replaceAll(packPath(src), packPath(target)).replaceAll(langPackId(src), langPackId(target));
     log(`Manifest: rewrote ${LANG_NAMES[src]} → ${LANG_NAMES[target]}`);
   }
 
