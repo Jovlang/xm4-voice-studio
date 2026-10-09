@@ -13,8 +13,9 @@
     "prebuild": "npm run sync",
     "build": "astro build",
     "preview": "astro preview",
-    "test": "npm run test:fota-machine",
+    "test": "npm run test:fota-machine && npm run test:sound-import",
     "test:fota-machine": "tsx test/fota-machine.ts",
+    "test:sound-import": "node test/sound-import.mjs",
     "astro": "astro",
     "og": "chromium --headless --disable-gpu --hide-scrollbars --allow-file-access-from-files --window-size=1200,630 --virtual-time-budget=2000 --screenshot=public/og-image.png \"file://$PWD/scripts/og-card.html\""
   },

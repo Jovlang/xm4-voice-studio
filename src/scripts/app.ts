@@ -270,33 +270,54 @@ async function removeSound(s: Sound) {
   await loadSounds();
 }
 
+let soundsUploading = false;
 async function uploadSounds(files: File[]) {
+  if (soundsUploading || !files.length) return;
+  soundsUploading = true;
   const dock = $("dock");
-  dock.classList.add("hold"); // keep the bay open while converting
+  dock.classList.add("open", "hold"); // keep results and errors visible after conversion
   const add = $<HTMLButtonElement>("soundAdd");
   add.disabled = true;
   const zone = $("soundDrop");
   const original = zone.innerHTML;
   const taken = new Set(state.sounds.map((s) => s.name));
   const errors: string[] = [];
-  for (const f of files) {
-    zone.textContent = `Converting ${f.name}…`;
-    try {
-      const mp3 = await toSlotMp3(f);
+  showErrors("soundError", []);
+  try {
+    for (const f of files) {
+      zone.textContent = `Converting ${f.name}…`;
+      let mp3: Uint8Array;
+      try {
+        mp3 = await toSlotMp3(f);
+      } catch (e) {
+        errors.push(`${f.name}: couldn't convert (${errMsg(e) || "unsupported format"})`);
+        continue;
+      }
       const stem = f.name.replace(/\.[^.]+$/, "").replace(/[^\w.\- ]+/g, "_").trim() || "sound";
       let name = stem;
       for (let n = 2; taken.has(name); n++) name = `${stem}_${n}`;
+      try {
+        await store.set(`sound:${name}`, mp3);
+      } catch (e) {
+        errors.push(`${f.name}: couldn't save (${errMsg(e) || "browser storage unavailable"})`);
+        continue;
+      }
       taken.add(name);
-      await store.set(`sound:${name}`, mp3);
-    } catch (e) {
-      errors.push(`${f.name}: couldn't convert (${(e as Error).message || "unsupported format"})`);
+      state.sounds.push({ id: `custom/${name}`, kind: "custom", name, size: mp3.length, url: blobUrl(mp3), data: mp3 });
     }
+    // Imported sounds are already in memory and IndexedDB. Refreshing them by fetching
+    // the library again made successful imports disappear from the UI when offline.
+    renderSounds();
+    renderSlots();
+  } catch (e) {
+    errors.push(`Couldn't update the sound list (${errMsg(e)}). Reload to recover saved sounds.`);
+  } finally {
+    zone.innerHTML = original;
+    showErrors("soundError", errors);
+    add.disabled = false;
+    dock.classList.remove("hold");
+    soundsUploading = false;
   }
-  zone.innerHTML = original;
-  showErrors("soundError", errors);
-  await loadSounds();
-  add.disabled = false;
-  dock.classList.remove("hold");
 }
 
 // ---------- slots ----------
