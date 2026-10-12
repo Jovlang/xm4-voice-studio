@@ -686,7 +686,10 @@ async function connectBluetooth(which: "mdr" | "race") {
   bt.busy = true;
   renderBluetooth();
   try {
-    if (which === "mdr") await bt.transport.connectMdr();
+    if (which === "mdr") {
+      btLog(`Control connection requested; existing control=${!!bt.transport.mdr}, update=${!!bt.transport.race}.`);
+      await bt.transport.connectMdr((message) => btLog(message));
+    }
     else await bt.transport.connectRace();
     setTransportStatus(buttonId, "success");
   } catch (e) {

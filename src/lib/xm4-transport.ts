@@ -95,22 +95,49 @@ class FramedPort {
 
   private constructor(port: SerialPortLike) { this.port = port; }
 
-  static async request(serviceUuid: string): Promise<FramedPort> {
+  static async request(serviceUuid: string, log: (message: string) => void = () => {}): Promise<FramedPort> {
+    const started = Date.now();
+    const report = (message: string) => log(`Control +${((Date.now() - started) / 1000).toFixed(3)} s: ${message}`);
+    const failed = (stage: string, error: unknown) => {
+      const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+      report(`${stage} failed: ${detail}`);
+    };
+    report(`secureContext=${globalThis.isSecureContext}; Web Serial=${!!navigator.serial}; service=${serviceUuid}.`);
     if (!navigator.serial) throw new Error("Web Serial Bluetooth is unavailable. Use current desktop Chrome or Edge over HTTPS/localhost.");
     // requestPort must be called directly from a user gesture.
     // The filter limits the picker to this RFCOMM service, so the two XM4 entries can't be mixed up.
-    const port = await navigator.serial.requestPort({
-      filters: [{ bluetoothServiceClassId: serviceUuid }],
-      allowedBluetoothServiceClassIds: [serviceUuid],
-    });
-    await port.open({ baudRate: 115200, dataBits: 8, stopBits: 1, parity: "none", flowControl: "none" });
+    report("Opening Bluetooth port picker; waiting for your selection.");
+    let port: SerialPortLike;
+    try {
+      port = await navigator.serial.requestPort({
+        filters: [{ bluetoothServiceClassId: serviceUuid }],
+        allowedBluetoothServiceClassIds: [serviceUuid],
+      });
+    } catch (error) {
+      failed("Port selection", error);
+      throw error;
+    }
+    report("Port selected.");
+    try { report(`Port info=${JSON.stringify(port.getInfo())}.`); }
+    catch (error) { failed("Reading port info", error); }
+    report("Calling SerialPort.open: baudRate=115200, dataBits=8, stopBits=1, parity=none, flowControl=none.");
+    try {
+      await port.open({ baudRate: 115200, dataBits: 8, stopBits: 1, parity: "none", flowControl: "none" });
+    } catch (error) {
+      failed("SerialPort.open", error);
+      report("The browser could not open the RFCOMM service; this error does not identify whether the cause is a port lock, Windows Bluetooth, or the headset.");
+      throw error;
+    }
+    report(`SerialPort.open resolved; readable=${!!port.readable}, writable=${!!port.writable}.`);
     if (!port.readable || !port.writable) {
       await port.close();
       throw new Error("The selected RFCOMM port did not expose readable and writable streams.");
     }
     const channel = new FramedPort(port);
-    channel.reader = port.readable.getReader();
+    try { channel.reader = port.readable.getReader(); }
+    catch (error) { failed("Acquiring stream reader", error); throw error; }
     channel.readTask = channel.pump();
+    report("Stream reader acquired; receive loop started. No Sony commands have been sent.");
     return channel;
   }
 
@@ -206,7 +233,7 @@ export class Xm4MdrChannel {
   private sequence = 0;
   private constructor(private channel: FramedPort) {}
 
-  static async request(): Promise<Xm4MdrChannel> { return new Xm4MdrChannel(await FramedPort.request(XM4_UUID.mdr)); }
+  static async request(log?: (message: string) => void): Promise<Xm4MdrChannel> { return new Xm4MdrChannel(await FramedPort.request(XM4_UUID.mdr, log)); }
   info(): SerialPortInfo { return this.channel.info(); }
 
   async send(payload: Uint8Array, type = MDR_DATA): Promise<void> {
@@ -263,7 +290,7 @@ export class Xm4Transport {
   mdr?: Xm4MdrChannel;
   race?: Xm4RaceChannel;
 
-  async connectMdr(): Promise<Xm4MdrChannel> { this.mdr = await Xm4MdrChannel.request(); return this.mdr; }
+  async connectMdr(log?: (message: string) => void): Promise<Xm4MdrChannel> { this.mdr = await Xm4MdrChannel.request(log); return this.mdr; }
   async connectRace(): Promise<Xm4RaceChannel> { this.race = await Xm4RaceChannel.request(); return this.race; }
 
   async close(): Promise<void> {
