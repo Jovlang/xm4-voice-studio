@@ -101,7 +101,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
                 <button id="dockClose" aria-label="Close your sounds">Close</button>
               </div>
             </div>
-            <div id="soundDrop" class="drop">Drop audio or video files here or <u>click to choose</u>. Converted to 48 kHz mono MP3, silence trimmed, and volume normalized with peak and gain limits. Keep them short.</div>
+            <div id="soundDrop" class="drop">Drop audio or video files here or <u>click to choose</u>. Converted to 48 kHz mono MP3 with silence trimmed. Your source volume is retained. Keep them short.</div>
             <p id="soundError" class="err" hidden></p>
             <input id="soundFile" type="file" accept="audio/*,video/*" multiple hidden />
             <div id="sounds" class="tapes"></div>

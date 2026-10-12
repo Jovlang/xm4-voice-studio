@@ -31,9 +31,8 @@ changes in this fork do not automatically appear there.
   markers are retried. Missing sounds are shown explicitly instead of silently resetting choices to stock;
   installation refuses missing assignments. IndexedDB writes wait for transaction completion, and blocked
   database opening and network requests report errors rather than leaving an indefinite loading indicator.
-- **Audio normalization:** New audio uploads target -20 dBFS RMS with a +12 dB gain limit and a -3 dBFS
-  sample-peak ceiling. Silence and very quiet noise are left alone. Existing sounds and ZIP imports retain
-  their encoded audio; reupload source audio to normalize it. This does not measure LUFS or compress dynamics.
+- **Source volume retained:** Audio imports retain their source level through conversion and silence trimming.
+  No normalization, gain adjustment, or dynamic compression is applied. ZIP imports retain their encoded audio.
 - **Connection safeguards:** A same-headset confirmation is required before Check/Install/Restore, wrong
   service IDs are refused, and Disconnect releases both ports. Confirmation resets when a channel changes.
 
@@ -94,8 +93,8 @@ the same Supabase bucket. Content blockers can prevent the sharing panel or Supa
 ## Validation and hardware boundaries
 
 The combined changes passed the production Astro build, existing FOTA state-machine simulations,
-twelve commit-outcome scenarios, five sound-import scenarios, import retry/cancellation checks, audio
-normalization checks, and IndexedDB commit/abort checks. Control-port opening was also checked
+twelve commit-outcome scenarios, five sound-import scenarios, import retry/cancellation checks,
+and IndexedDB commit/abort checks. Control-port opening was also checked
 with simulated picker failure, port-open failure, and success. Browser ZIP export was checked for all
 assigned custom files, and the exported pack was successfully imported on the upstream site.
 These checks do not establish physical installation success on every XM4 unit.
