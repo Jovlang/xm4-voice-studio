@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import { normalizeVolume } from "../src/lib/audio";
+const rms = (a: Float32Array) => Math.sqrt(a.reduce((sum, n) => sum + n * n, 0) / a.length);
+const quiet = normalizeVolume(Float32Array.from([0.03, -0.03, 0.03, -0.03]));
+assert.ok(Math.abs(rms(quiet) - 0.1) < 0.00001);
+const loud = normalizeVolume(Float32Array.from([0.4, -0.4]));
+assert.ok(Math.abs(rms(loud) - 0.1) < 0.00001);
+assert.deepEqual(normalizeVolume(new Float32Array(10)), new Float32Array(10));
+const noise = Float32Array.from([0.0001, -0.0001]);
+assert.equal(normalizeVolume(noise), noise);
+const spikes = new Float32Array(1000); spikes[0] = 0.9; spikes[1] = -0.9;
+assert.ok(Math.max(...normalizeVolume(spikes)) <= 10 ** (-3 / 20) + 0.000001);
+assert.ok(rms(normalizeVolume(Float32Array.from([0.004, -0.004]))) <= 0.004 * 10 ** (12 / 20) + 0.000001);
+assert.throws(() => normalizeVolume(Float32Array.of(NaN)), /invalid samples/);
+console.log("Audio normalization checks passed");

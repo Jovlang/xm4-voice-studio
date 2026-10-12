@@ -326,6 +326,7 @@ export class Xm4DirectUpdater {
 
   static fromTransport(transport: Xm4Transport): Xm4DirectUpdater {
     if (!transport.mdr || !transport.race) throw new Error("Connect both the Sony control and update channels first.");
+    if (!transport.sameHeadsetConfirmed) throw new Error("Confirm both channels belong to the same headset and other headsets are off before continuing.");
     return new Xm4DirectUpdater(transport.mdr, transport.race);
   }
 
@@ -477,8 +478,10 @@ export class Xm4DirectUpdater {
     let accepted = false;
     let deviceCancel: string | undefined;
     diagnostic("TX type=0x5a command=0x1c02 payload=00.");
-    await this.race.send(RACE_ID.commit, Uint8Array.of(0x00));
+    // A failed write can still have delivered the command. Treat that outcome as uncertain.
     this.committed = true;
+    try { await this.race.send(RACE_ID.commit, Uint8Array.of(0x00)); }
+    catch (error) { throw new CommitUnconfirmedError(`Commit send failed; delivery and installation are unknown: ${(error as Error).message}. Check the voice guidance before retrying.`); }
     diagnostic("Command sent; device acceptance is not yet confirmed.");
     const deadline = Date.now() + COMMIT_WAIT_MS;
     while (Date.now() < deadline) {
@@ -489,10 +492,10 @@ export class Xm4DirectUpdater {
         if (error instanceof BluetoothClosedError) {
           diagnostic(`Update channel closed (${error.message}); cause unknown. ${accepted ? "A positive commit response was received." : "No positive commit response was received."} Installation is not confirmed by link closure alone.`);
           if (deviceCancel) diagnostic(`Device cancellation was also observed: ${deviceCancel}.`);
-          return;
+          throw new CommitUnconfirmedError(`Update channel closed. ${accepted ? "The commit was accepted, but" : "No commit acceptance was received;"} installation is not confirmed. Reconnect after restarting and check the voice guidance.`);
         }
         if (error instanceof BluetoothTimeoutError) break;
-        throw error;
+        throw new CommitUnconfirmedError(`Commit outcome is unknown after a receive error: ${(error as Error).message}. Check the voice guidance before retrying.`);
       }
       received++;
       diagnostic(`RX type=0x${frame.type.toString(16).padStart(2, "0")} command=0x${frame.command.toString(16).padStart(4, "0")} payload=${hex(frame.payload) || "(empty)"}.`);
@@ -500,18 +503,22 @@ export class Xm4DirectUpdater {
         const reason = frame.payload[2];
         const reasons: Record<number, string> = { 0: "cancelled", 1: "failed", 2: "timed out", 3: "partner lost", 4: "not allowed" };
         deviceCancel = reason === undefined ? "truncated cancellation payload" : `${reasons[reason] ?? "unknown reason"} (0x${reason.toString(16).padStart(2, "0")})`;
-        diagnostic(`Device requested FOTA cancellation: ${deviceCancel}. Diagnostic mode preserves the existing wait and cleanup sequence; no cancellation acknowledgement is added.`);
+        diagnostic(`Device requested FOTA cancellation: ${deviceCancel}; acknowledging and stopping.`);
+        this.committed = false;
+        await new RaceSession(this.race, progress, 1, 0).handleDeviceCancel(frame);
       }
       if (frame.command !== RACE_ID.commit) continue;
       if (!frame.payload.length) {
         diagnostic("Commit frame has no status byte; it cannot confirm acceptance or rejection.");
         continue;
       }
+      if (frame.type !== RACE_TYPE.response) {
+        diagnostic("Commit frame has an unexpected type; acceptance is not confirmed.");
+        continue;
+      }
       if (frame.type === RACE_TYPE.response && frame.payload[0] === 0) {
         accepted = true;
         diagnostic("Positive commit response received (status 0x00); waiting for channel closure. Installation is not yet confirmed.");
-      } else if (frame.payload[0] === 0) {
-        diagnostic("Zero-status commit frame has an unexpected type; acceptance is not confirmed.");
       }
       if (frame.payload[0] !== 0) {
         diagnostic(`Commit rejection observed: status 0x${frame.payload[0].toString(16).padStart(2, "0")}, type 0x${frame.type.toString(16).padStart(2, "0")}.`);
@@ -520,13 +527,13 @@ export class Xm4DirectUpdater {
       }
     }
     // s6.b.g: commit without a disconnect is reported as COMMIT_FAIL.
-    this.committed = false;
+    // A sent commit may still be processing. Do not cancel an uncertain commit.
     const evidence = deviceCancel
       ? `Device requested FOTA cancellation: ${deviceCancel}.`
       : accepted ? "A positive commit response was received."
       : received === 0 ? "No incoming RACE frames were received after sending commit; acceptance is not confirmed."
       : "Incoming RACE frames were received, but no positive commit response; acceptance is not confirmed.";
-    diagnostic(`Restart wait timed out. ${evidence} Installation status is unresolved; existing FOTA cancel and update-mode cleanup will run.`);
+    diagnostic(`Restart wait timed out. ${evidence} Installation status is unresolved; no FOTA cancellation or update-mode command will be sent.`);
     throw new CommitUnconfirmedError(`Update channel did not close within ${COMMIT_WAIT_MS / 1000} s. ${evidence} Installation status is unresolved. Power-cycle them and check the voice guidance.`);
   }
 

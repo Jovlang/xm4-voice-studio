@@ -1,5 +1,5 @@
 // Browser replacement for `ffmpeg -ar 48000 -ac 1 -b:a 64k`: decode anything the browser
-// can play, downmix + resample to 48 kHz mono, trim silence off the ends, encode 64 kbps MP3
+// can play, downmix + resample to 48 kHz mono, trim silence, normalize RMS volume, encode 64 kbps MP3
 // (raw frames, no ID3/Xing).
 import { Mp3Encoder } from "@breezystack/lamejs";
 
@@ -23,14 +23,18 @@ export function trimSilence(pcm: Float32Array): Float32Array {
 }
 
 export async function toSlotMp3(file: Blob): Promise<Uint8Array> {
-  const decoded = await new AudioContext().decodeAudioData(await file.arrayBuffer());
+  const decoder = new AudioContext();
+  let decoded: AudioBuffer;
+  try { decoded = await decoder.decodeAudioData(await file.arrayBuffer()); }
+  finally { await decoder.close(); }
+  if (!decoded.length) throw new Error("Audio clip is empty");
   const length = Math.ceil(decoded.duration * RATE);
   const ctx = new OfflineAudioContext(1, length, RATE);
   const src = ctx.createBufferSource();
   src.buffer = decoded; // a mono destination downmixes automatically
   src.connect(ctx.destination);
   src.start();
-  const pcm = trimSilence((await ctx.startRendering()).getChannelData(0));
+  const pcm = normalizeVolume(trimSilence((await ctx.startRendering()).getChannelData(0)));
 
   const samples = new Int16Array(pcm.length);
   for (let i = 0; i < pcm.length; i++) {
@@ -54,3 +58,21 @@ export async function toSlotMp3(file: Blob): Promise<Uint8Array> {
 
 /** Approximate duration of a 64 kbps MP3. */
 export const mp3Seconds = (bytes: number) => bytes / (KBPS * 125);
+
+/** Match short prompts to -20 dBFS RMS, capped at +12 dB gain and -3 dBFS sample peak.
+ * This is RMS normalization, not perceptual LUFS measurement or dynamic compression.
+ * Near-silent clips stay untouched so deliberate silence and noise aren't amplified.
+ */
+export function normalizeVolume(pcm: Float32Array): Float32Array {
+  let energy = 0;
+  let peak = 0;
+  for (const sample of pcm) {
+    if (!Number.isFinite(sample)) throw new Error("Audio contains invalid samples");
+    energy += sample * sample;
+    peak = Math.max(peak, Math.abs(sample));
+  }
+  const rms = Math.sqrt(energy / Math.max(1, pcm.length));
+  if (rms <= SILENCE || !peak) return pcm;
+  const gain = Math.min(0.1 / rms, 10 ** (12 / 20), 10 ** (-3 / 20) / peak);
+  return Float32Array.from(pcm, sample => sample * gain);
+}

@@ -6,18 +6,24 @@ let dbPromise: Promise<IDBDatabase> | undefined;
 function db(): Promise<IDBDatabase> {
   dbPromise ??= new Promise((resolve, reject) => {
     const req = indexedDB.open(DB, 1);
+    let expired = false;
+    const timer = setTimeout(() => { expired = true; reject(new Error("Browser storage did not open within 10 seconds. Close other Studio tabs and retry.")); }, 10000);
+    req.onblocked = () => { clearTimeout(timer); expired = true; reject(new Error("Browser storage is blocked by another tab. Close it and retry.")); };
     req.onupgradeneeded = () => req.result.createObjectStore(STORE);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => { clearTimeout(timer); if (expired) req.result.close(); else resolve(req.result); };
+    req.onerror = () => { clearTimeout(timer); reject(req.error); };
   });
+  dbPromise = dbPromise.catch(error => { dbPromise = undefined; throw error; });
   return dbPromise;
 }
 
 function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   return db().then((d) => new Promise<T>((resolve, reject) => {
-    const req = fn(d.transaction(STORE, mode).objectStore(STORE));
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    const transaction = d.transaction(STORE, mode);
+    const req = fn(transaction.objectStore(STORE));
+    transaction.oncomplete = () => resolve(req.result);
+    transaction.onerror = () => reject(transaction.error || req.error);
+    transaction.onabort = () => reject(transaction.error || new Error("Browser storage transaction aborted"));
   }));
 }
 

@@ -15,6 +15,7 @@ export const XM4_UUID = {
 } as const;
 
 export interface SerialPortInfo {
+  bluetoothServiceClassId?: string | number;
   usbVendorId?: number;
   usbProductId?: number;
 }
@@ -118,8 +119,14 @@ class FramedPort {
       throw error;
     }
     report("Port selected.");
-    try { report(`Port info=${JSON.stringify(port.getInfo())}.`); }
-    catch (error) { failed("Reading port info", error); }
+    try {
+      const info = port.getInfo();
+      report(`Port info=${JSON.stringify(info)}.`);
+      if (info.bluetoothServiceClassId && String(info.bluetoothServiceClassId).toLowerCase() !== serviceUuid.toLowerCase()) {
+        throw new Error("Selected port exposes the wrong Bluetooth service. Select the correct channel again.");
+      }
+    }
+    catch (error) { failed("Reading port info", error); throw error; }
     report("Calling SerialPort.open: baudRate=115200, dataBits=8, stopBits=1, parity=none, flowControl=none.");
     try {
       await port.open({ baudRate: 115200, dataBits: 8, stopBits: 1, parity: "none", flowControl: "none" });
@@ -135,7 +142,7 @@ class FramedPort {
     }
     const channel = new FramedPort(port);
     try { channel.reader = port.readable.getReader(); }
-    catch (error) { failed("Acquiring stream reader", error); throw error; }
+    catch (error) { failed("Acquiring stream reader", error); await port.close().catch(() => {}); throw error; }
     channel.readTask = channel.pump();
     report("Stream reader acquired; receive loop started. No Sony commands have been sent.");
     return channel;
@@ -287,16 +294,26 @@ export class Xm4RaceChannel {
 
 /** Minimal paired-channel owner; connect each channel from its own button click. */
 export class Xm4Transport {
+  sameHeadsetConfirmed = false;
   mdr?: Xm4MdrChannel;
   race?: Xm4RaceChannel;
 
-  async connectMdr(log?: (message: string) => void): Promise<Xm4MdrChannel> { this.mdr = await Xm4MdrChannel.request(log); return this.mdr; }
-  async connectRace(): Promise<Xm4RaceChannel> { this.race = await Xm4RaceChannel.request(); return this.race; }
+  async connectMdr(log?: (message: string) => void): Promise<Xm4MdrChannel> {
+    if (this.mdr) throw new Error("Control channel is already connected; disconnect before selecting another headset.");
+    this.sameHeadsetConfirmed = false;
+    this.mdr = await Xm4MdrChannel.request(log); return this.mdr;
+  }
+  async connectRace(): Promise<Xm4RaceChannel> {
+    if (this.race) throw new Error("Update channel is already connected; disconnect before selecting another headset.");
+    this.sameHeadsetConfirmed = false;
+    this.race = await Xm4RaceChannel.request(); return this.race;
+  }
 
   async close(): Promise<void> {
     const channels = [this.mdr?.close(), this.race?.close()].filter((p): p is Promise<void> => !!p);
     this.mdr = undefined;
     this.race = undefined;
+    this.sameHeadsetConfirmed = false;
     await Promise.allSettled(channels);
   }
 }

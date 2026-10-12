@@ -79,7 +79,7 @@ export function unzipPack(zip: Uint8Array): SharedPack {
 
   const assignments: Record<string, string> = {};
   for (const [slot, id] of Object.entries(meta.assignments)) {
-    if (!/^\d{1,3}$/.test(slot) || typeof id !== "string") throw new Error("pack.json has an invalid prompt");
+    if (!/^(0|[1-9]\d?)$/.test(slot) || Number(slot) >= 54 || typeof id !== "string") throw new Error("pack.json has an invalid prompt");
     if (id.startsWith("custom/") && !sounds[id.slice(7)]) throw new Error(`the pack is missing ${id.slice(7)}`);
     if (!id.startsWith("custom/") && !/^library\/[\w.\- ]+$/.test(id)) throw new Error("pack.json has an invalid sound");
     assignments[slot] = id;
@@ -111,7 +111,7 @@ export async function uploadPack(pack: SharedPack): Promise<string> {
 }
 
 export async function downloadPack(id: string): Promise<SharedPack> {
-  const r = await fetch(publicUrl(id));
+  const r = await fetch(publicUrl(id), { signal: AbortSignal.timeout(20000) });
   if (r.status === 400 || r.status === 404) throw new Error("this shared pack doesn't exist (it may have been removed)");
   if (!r.ok) throw new Error(`download failed (HTTP ${r.status})`);
   const zip = new Uint8Array(await r.arrayBuffer());

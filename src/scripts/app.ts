@@ -30,6 +30,7 @@ const state = {
   hiddenLibrary: (saved.hiddenLibrary as string[]) || [],
   /** Last #pack=<id> opened; the link stays in the address bar, so reloading mustn't open it again. */
   openedPack: saved.openedPack as string | undefined,
+  openedPackVerified: !!saved.openedPackVerified,
   sounds: [] as Sound[],
   pack: undefined as VoicePack | undefined,
   built: undefined as Uint8Array | undefined,
@@ -50,8 +51,8 @@ const audio = $<HTMLAudioElement>("preview");
 const eq = new StereoEq($("eq"), audio, { text: $("vfdText"), time: $("eqTime") });
 
 function save() {
-  const { source, assignments, showAll, hiddenLibrary, openedPack } = state;
-  localStorage.setItem("xm4", JSON.stringify({ source, assignments, showAll, hiddenLibrary, openedPack }));
+  const { source, assignments, showAll, hiddenLibrary, openedPack, openedPackVerified } = state;
+  localStorage.setItem("xm4", JSON.stringify({ source, assignments, showAll, hiddenLibrary, openedPack, openedPackVerified }));
 }
 const errMsg = (e: unknown) => (e as Error).message;
 const kb = (n: number) => (n / 1024).toFixed(1) + " KB";
@@ -135,7 +136,7 @@ function initLanguages() {
 /** Fetch the site's copy of a Sony file (public/sony/). Returns undefined if it's missing or invalid. */
 async function fetchSony(path: string, valid: (raw: Uint8Array) => boolean): Promise<Uint8Array | undefined> {
   try {
-    const r = await fetch(mirrorUrl(path));
+    const r = await fetch(mirrorUrl(path), { signal: AbortSignal.timeout(15000) });
     if (!r.ok) return undefined;
     const raw = new Uint8Array(await r.arrayBuffer());
     return valid(raw) ? raw : undefined;
@@ -148,12 +149,12 @@ async function loadSourcePack() {
   const code = state.source;
   let pack = packCache.get(code);
   if (!pack) {
-    let raw = await store.get(`pack:${code}`);
+    let raw = await store.get(`pack:${code}`).catch(() => undefined);
     if (!raw) {
       state.sonyLoading = true;
       renderSony();
       raw = await fetchSony(packPath(code), isVoicePack);
-      if (raw) await store.set(`pack:${code}`, raw);
+      if (raw) await store.set(`pack:${code}`, raw).catch(() => undefined);
     }
     if (raw) {
       pack = loadPack(raw);
@@ -209,7 +210,9 @@ async function addSonyFiles(files: File[]) {
 // ---------- sounds ----------
 
 async function loadSounds() {
-  const library: { file: string; name: string; size: number }[] = await fetch(asset("sounds/index.json")).then((r) => r.json());
+  const response = await fetch(asset("sounds/index.json"), { signal: AbortSignal.timeout(15000) });
+  if (!response.ok) throw new Error(`Sound library download failed (HTTP ${response.status})`);
+  const library: { file: string; name: string; size: number }[] = await response.json();
   const sounds: Sound[] = library
     .map((s): Sound => ({ id: `library/${s.file}`, kind: "library", name: s.name, size: s.size, url: asset(`sounds/${s.file}`) }))
     .filter((s) => !state.hiddenLibrary.includes(s.id));
@@ -218,13 +221,8 @@ async function loadSounds() {
     sounds.push({ id: `custom/${key.slice(6)}`, kind: "custom", name: key.slice(6), size: data.length, url: blobUrl(data), data });
   }
   state.sounds = sounds;
-  const ids = new Set(sounds.map((s) => s.id));
-  for (const [slot, id] of Object.entries(state.assignments)) {
-    if (!ids.has(id)) {
-      delete state.assignments[slot];
-      state.built = undefined;
-    }
-  }
+  state.built = undefined;
+  // Never discard a user's assignments because a sound is temporarily unavailable.
   save();
   renderSounds();
   renderSlots();
@@ -267,6 +265,11 @@ async function removeSound(s: Sound) {
     state.hiddenLibrary = [...state.hiddenLibrary, s.id];
     save();
   }
+  for (const [slot, id] of Object.entries(state.assignments)) {
+    if (id === s.id) delete state.assignments[slot];
+  }
+  state.built = undefined;
+  save();
   await loadSounds();
 }
 
@@ -364,6 +367,7 @@ function renderSlots() {
       const sel = el("select", {},
         el("option", { value: "", textContent: "— stock —" }),
         ...state.sounds.map((s) => el("option", { value: s.id, textContent: (s.kind === "custom" ? "★ " : "") + s.name })));
+      if (id && !state.sounds.some((s) => s.id === id)) sel.append(el("option", { value: id, textContent: `Missing: ${id.split("/").slice(1).join("/")}` }));
       sel.value = id || "";
       sel.onchange = () => {
         if (sel.value) state.assignments[i] = sel.value;
@@ -406,7 +410,9 @@ async function ensureBuilt(): Promise<Uint8Array> {
   btLog(`  labelled ${LANG_NAMES[INSTALL_AS]} for the headphones`);
   const slots = [...pack.slots];
   for (const [slot, id] of Object.entries(state.assignments)) {
-    const s = state.sounds.find((x) => x.id === id)!;
+    const s = state.sounds.find((x) => x.id === id);
+    if (!s) throw new Error(`Missing assigned sound ${id}; reimport it before installing.`);
+    if (!Number.isInteger(Number(slot)) || Number(slot) < 0 || Number(slot) >= slots.length) throw new Error(`Invalid prompt slot ${slot}`);
     slots[Number(slot)] = await soundBytes(s);
     btLog(`  slot ${slot} (${SLOT_LABELS[Number(slot)] ?? "?"}) ← ${s.name}`);
   }
@@ -436,6 +442,7 @@ function sharePanel(msg: string, opts: { link?: string; busy?: boolean; actions?
   if (opts.link) box.append(el("input", { value: opts.link, readOnly: true, ariaLabel: "Share link", onfocus: (e: FocusEvent) => (e.target as HTMLInputElement).select() }));
   box.append(el("div", { className: "share-keys" }, ...(opts.actions ?? []).map(([label, run]) => el("button", { textContent: label, onclick: run }))));
   shareFor = shareKey();
+  box.scrollIntoView({ block: "nearest", behavior: "auto" });
 }
 
 function closeShare() {
@@ -536,7 +543,7 @@ async function applySharedPack(pack: SharedPack) {
       `Open the shared pack? It changes ${prompts} and replaces your current choices. Its sounds are added to your tapes.`,
       { actions: [["Open", () => resolve(true)], ["Cancel", () => resolve(false)]] },
     ));
-    if (!open) return closeShare();
+    if (!open) { closeShare(); return false; }
   }
 
   // Keep the sender's names; reuse an identical tape you already have, otherwise pick a free name.
@@ -549,32 +556,44 @@ async function applySharedPack(pack: SharedPack) {
     if (!have) await store.set(`sound:${as}`, data);
     local[name] = as;
   }
-  state.assignments = Object.fromEntries(Object.entries(pack.assignments)
+  // Resolve every sound before replacing the current choices. Failed imports remain retryable.
+  const assignments = Object.fromEntries(Object.entries(pack.assignments)
     .map(([slot, sid]) => [slot, sid.startsWith("custom/") ? `custom/${local[sid.slice(7)]}` : sid]));
-  // Bring back any library tapes the pack uses; loadSounds() drops ones this site doesn't have.
-  const used = new Set(Object.values(state.assignments));
+  // Bring back any library tapes the pack uses.
+  const used = new Set(Object.values(assignments));
+  const previousHidden = state.hiddenLibrary;
   state.hiddenLibrary = state.hiddenLibrary.filter((sid) => !used.has(sid));
+  try {
+    await loadSounds();
+    for (const id of Object.values(assignments)) {
+      if (!state.sounds.some((sound) => sound.id === id)) throw new Error(`Missing imported sound ${id}`);
+    }
+  } catch (error) { state.hiddenLibrary = previousHidden; save(); throw error; }
+  state.assignments = assignments;
   if (LANG_NAMES[pack.source]) {
     state.source = pack.source;
     $<HTMLSelectElement>("source").value = pack.source;
   }
   state.built = undefined;
   save();
-  await loadSounds();
+  renderSlots();
   sharePanel(`Opened shared pack: ${prompts} changed`, { actions: [["Close", closeShare]] });
+  return true;
 }
 
 /** Open a shared pack from #pack=<id>: its sounds become your tapes and its prompt choices replace yours. */
 async function importLinkedPack() {
   const id = linkedPackId();
-  if (!id || !shareEnabled || id === state.openedPack) return;
+  if (!id || !shareEnabled || (id === state.openedPack && state.openedPackVerified)) return;
   sharePanel("Opening shared pack", { busy: true });
   $("shareBox").scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   try {
     const pack = await downloadPack(id);
-    state.openedPack = id;
-    save();
-    await applySharedPack(pack);
+    if (await applySharedPack(pack)) {
+      state.openedPack = id;
+      state.openedPackVerified = true;
+      save();
+    }
   } catch (e) { sharePanel(`✗ Couldn't open the shared pack: ${errMsg(e)}`, { actions: [["Close", closeShare]] }); }
 }
 
@@ -647,7 +666,9 @@ function renderBluetooth() {
   const supported = "serial" in navigator;
   const { mdr, race } = bt.transport;
   const channelsReady = !!mdr && !!race;
-  const ready = supported && !bt.busy && channelsReady;
+  const ready = supported && !bt.busy && channelsReady && $<HTMLInputElement>("btSameHeadset").checked;
+  $<HTMLButtonElement>("btDisconnect").disabled = bt.busy || (!mdr && !race);
+  $<HTMLInputElement>("btSameHeadset").disabled = bt.busy || !channelsReady;
   $("btUnsupported").hidden = supported;
   $<HTMLButtonElement>("btMdr").disabled = !supported || bt.busy || !!mdr;
   $<HTMLButtonElement>("btRace").disabled = !supported || bt.busy || !!race;
@@ -681,6 +702,7 @@ function renderBluetooth() {
 
 async function connectBluetooth(which: "mdr" | "race") {
   if (bt.busy) return;
+  $<HTMLInputElement>("btSameHeadset").checked = false;
   const buttonId = which === "mdr" ? "btMdr" : "btRace";
   setTransportStatus(buttonId, "progress");
   bt.busy = true;
@@ -789,7 +811,7 @@ async function installBluetooth(bin: Uint8Array, what: string, { clearLog = true
     } else {
       terminalProgress(fraction, undefined, "FAILED");
       setTransportStatus("btInstall", "failed");
-      btLog(`✗ ${(e as Error).message} Your current prompts are unchanged.`, "err");
+      btLog(`✗ ${(e as Error).message}`, "err");
     }
   } finally {
     // After a commit the headphones drop both channels; reconnect from scratch next time.
@@ -802,7 +824,8 @@ async function installBluetooth(bin: Uint8Array, what: string, { clearLog = true
     bt.busy = false;
     renderBluetooth();
   }
-  if (done && thanks) $<HTMLDialogElement>("kofi").showModal();
+  // Offer the completion panel only for confirmed completion, never an uncertain commit.
+  if (done && thanks && $<HTMLButtonElement>("btInstall").parentElement!.dataset.status === "success") $<HTMLDialogElement>("kofi").showModal();
 }
 
 async function demoInstall() {
@@ -874,6 +897,23 @@ $<HTMLInputElement>("packFile").onchange = (e) => {
 addEventListener("hashchange", () => void importLinkedPack().then(loadSourcePack));
 $("btMdr").onclick = () => void connectBluetooth("mdr");
 $("btRace").onclick = () => void connectBluetooth("race");
+$("btSameHeadset").onchange = () => {
+  bt.transport.sameHeadsetConfirmed = $<HTMLInputElement>("btSameHeadset").checked;
+  renderBluetooth();
+};
+$("btDisconnect").onclick = async () => {
+  if (bt.busy) return;
+  bt.busy = true;
+  renderBluetooth();
+  try { await bt.transport.close(); }
+  finally {
+    bt.transport = new Xm4Transport();
+    bt.busy = false;
+    $<HTMLInputElement>("btSameHeadset").checked = false;
+    setTransportStatus("btMdr", "off"); setTransportStatus("btRace", "off");
+    renderBluetooth();
+  }
+};
 $("btCheck").onclick = () => void checkBluetooth();
 $("btInstall").onclick = () => void (demo === null ? installBuilt() : demoInstall());
 $("btRestore").onclick = () => void restoreStock();
@@ -914,4 +954,13 @@ renderSony();
 renderSlots();
 renderBluetooth();
 void store.persist();
-void loadSounds().then(importLinkedPack).then(loadSourcePack);
+async function initialize() {
+  try { await loadSounds(); }
+  catch (e) { showErrors("soundError", [`Couldn't load sounds: ${errMsg(e)}. Your prompt choices are preserved; reload to retry.`]); $("dock").classList.add("open"); }
+  try { await loadSourcePack(); }
+  catch (e) { state.sonyLoading = false; showErrors("sonyError", [`Couldn't load Sony's pack: ${errMsg(e)}`]); renderSony(); renderSlots(); }
+  await importLinkedPack();
+  try { await loadSourcePack(); }
+  catch (e) { state.sonyLoading = false; showErrors("sonyError", [errMsg(e)]); renderSony(); renderSlots(); }
+}
+void initialize();

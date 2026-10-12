@@ -101,7 +101,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
                 <button id="dockClose" aria-label="Close your sounds">Close</button>
               </div>
             </div>
-            <div id="soundDrop" class="drop">Drop audio or video files here or <u>click to choose</u>. They're converted to 48 kHz mono MP3 and silence at the start and end is cut, so keep them short.</div>
+            <div id="soundDrop" class="drop">Drop audio or video files here or <u>click to choose</u>. Converted to 48 kHz mono MP3, silence trimmed, and volume normalized with peak and gain limits. Keep them short.</div>
             <p id="soundError" class="err" hidden></p>
             <input id="soundFile" type="file" accept="audio/*,video/*" multiple hidden />
             <div id="sounds" class="tapes"></div>
@@ -193,7 +193,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
             <ul class="checks">
               <li>A desktop <b>Chromium</b> browser such as Chrome or Edge, or another one with Bluetooth serial support (<a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API#browser_compatibility" target="_blank" rel="noopener">supported browsers</a>). Firefox and Safari can't do it.</li>
               <li>Headphones paired with <b>this computer</b> in its Bluetooth settings, and disconnected from your phone.</li>
-              <li>Battery at least 50%. It stops on its own below that.</li>
+              <li>Battery at least 50% before starting. Battery is checked again during transfer.</li>
               <li>In the Sony <b>Headphones Connect</b> app, set <b>Automatic Power Off</b> to <b>Do not turn off</b>, so they don't switch off mid-install.</li>
             </ul>
           </div>
@@ -201,6 +201,7 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
             <h3>Install</h3>
             <ol class="steps">
               <li>Click <b>Control channel</b>, then <b>Update channel</b>; choose <b>WH-1000XM4</b> each time.</li>
+              <li>Confirm both selections belong to the same headset, with your other headsets switched off.</li>
               <li>Optional: <b>Check</b> tests without installing.</li>
               <li><b>Install</b> takes about 15 minutes. Keep the headphones nearby.</li>
               <li>They switch off when done. When the light stops blinking, turn them on.</li>
@@ -211,11 +212,13 @@ const segFont = `@font-face { font-family: "DSEG14"; src: url("${dsegUrl}") form
           <div class="transport">
             <div class="transport-control" data-status="off"><button id="btMdr" class="key">Control channel</button><span class="transport-led" aria-hidden="true"></span></div>
             <div class="transport-control" data-status="off"><button id="btRace" class="key">Update channel</button><span class="transport-led" aria-hidden="true"></span></div>
+            <button id="btDisconnect" class="key" disabled>Disconnect</button>
             <div class="transport-control" data-status="off"><button id="btCheck" class="key" aria-label="Check without installing" disabled>Check</button><span class="transport-led" aria-hidden="true"></span></div>
             <div class="transport-control" data-status="off"><button id="btInstall" class="key primary" aria-label="Install on headphones" disabled>Install</button><span class="transport-led" aria-hidden="true"></span></div>
           </div>
         </div>
         <div class="bezel log"><pre id="btLog" class="lcd"><span id="btConnectionStatus" class="terminal-status" aria-live="polite"></span><span id="btLogLines"></span><span id="btTerminalProgress" class="terminal-progress" role="progressbar" aria-label="Voice pack transfer" aria-valuemin="0" aria-valuemax="100" hidden></span></pre></div>
+        <p><label><input id="btSameHeadset" type="checkbox" disabled /> Both channels were selected for the same headset; my other headsets are off.</label></p>
         <details>
           <summary>Troubleshooting and undo</summary>
           <dl>
