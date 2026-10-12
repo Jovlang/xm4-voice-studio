@@ -31,8 +31,6 @@ changes in this fork do not automatically appear there.
   markers are retried. Missing sounds are shown explicitly instead of silently resetting choices to stock;
   installation refuses missing assignments. IndexedDB writes wait for transaction completion, and blocked
   database opening and network requests report errors rather than leaving an indefinite loading indicator.
-- **Source volume retained:** Audio imports retain their source level through conversion and silence trimming.
-  No normalization, gain adjustment, or dynamic compression is applied. ZIP imports retain their encoded audio.
 - **Connection safeguards:** A same-headset confirmation is required before Check/Install/Restore, wrong
   service IDs are refused, and Disconnect releases both ports. Confirmation resets when a channel changes.
 
@@ -120,6 +118,8 @@ These checks do not establish physical installation success on every XM4 unit.
 
 ## Notes
 
+- Audio imports retain their source level through conversion and silence trimming. No normalization,
+  gain adjustment, or dynamic compression is applied. ZIP imports retain their encoded audio.
 - The LZMA encoder differs from the original Python implementation. The current automated tests cover
   installer decisions and diagnostics, not a Python-versus-browser binary-format comparison.
 - Bluetooth installation requires a desktop browser with Web Serial Bluetooth Classic RFCOMM support.
