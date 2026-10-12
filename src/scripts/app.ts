@@ -1,7 +1,7 @@
 import { mp3Seconds, toSlotMp3 } from "../lib/audio";
 import { asset } from "../lib/base";
 import { LANG_NAMES, langNumber, langOfFile, packFileName, packPath, packUrl, mirrorUrl } from "../lib/manifest";
-import { downloadPack, linkedPackId, shareEnabled, shareLink, unzipPack, uploadPack, type SharedPack } from "../lib/share";
+import { downloadPack, linkedPackId, shareEnabled, shareLink, unzipPack, uploadPack, zipPack, type SharedPack } from "../lib/share";
 import * as store from "../lib/store";
 import { buildPack, IMAGE_SIZE, imageOverhead, isVoicePack, loadPack, SLOT_LABELS, type VoicePack } from "../lib/voicepack";
 import { CommitUnconfirmedError, Xm4DirectUpdater, type InstallOptions } from "../lib/xm4-fota";
@@ -462,6 +462,33 @@ async function copyText(text: Promise<string>): Promise<boolean> {
 }
 
 /** Ask before uploading: the pack becomes public to anyone with the link. */
+async function exportPackZip() {
+  const button = $<HTMLButtonElement>("exportPack");
+  button.disabled = true;
+  try {
+    const source = state.source;
+    const assignments = { ...state.assignments };
+    const sounds: SharedPack["sounds"] = {};
+    for (const id of new Set(Object.values(assignments))) {
+      if (!id.startsWith("custom/")) continue;
+      const sound = state.sounds.find((s) => s.id === id);
+      if (!sound) throw new Error(`Missing sound ${id.slice(7)}. Add it again before exporting.`);
+      sounds[sound.name] = await soundBytes(sound);
+    }
+    const zip = zipPack({ source, assignments, sounds });
+    const url = URL.createObjectURL(new Blob([zip as BlobPart], { type: "application/zip" }));
+    const link = el("a", { href: url, download: "xm4-voice-pack.zip" });
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (e) {
+    sharePanel(`✗ Couldn't export: ${errMsg(e)}`, { actions: [["Close", closeShare]] });
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function sharePack() {
   const ids = new Set(Object.values(state.assignments));
   const n = state.sounds.filter((s) => s.kind === "custom" && ids.has(s.id)).length;
@@ -833,6 +860,7 @@ $("reset").onclick = () => {
 };
 $("share").hidden = !shareEnabled;
 $("share").onclick = () => void sharePack();
+$("exportPack").onclick = () => void exportPackZip();
 $("importPack").onclick = () => $("packFile").click();
 $<HTMLInputElement>("packFile").onchange = (e) => {
   const file = (e.target as HTMLInputElement).files?.[0];
