@@ -78,7 +78,7 @@ export const MIN_BATTERY_PERCENT = 50;
 
 export type Progress = (message: string) => void;
 
-/** The headphones took the install command but never dropped the link, so we can't tell whether it installed. */
+/** The commit outcome could not be confirmed before the restart deadline. */
 export class CommitUnconfirmedError extends Error {}
 
 export interface VoicePackCheck {
@@ -471,8 +471,15 @@ export class Xm4DirectUpdater {
   /** w6.e: after a successful commit the headset reboots and drops the link. */
   private async commit(progress: Progress): Promise<void> {
     progress("Installing: the headphones will restart. Do not turn them off.");
+    const started = Date.now();
+    const diagnostic = (message: string) => progress(`Commit +${((Date.now() - started) / 1000).toFixed(3)} s: ${message}`);
+    let received = 0;
+    let accepted = false;
+    let deviceCancel: string | undefined;
+    diagnostic("TX type=0x5a command=0x1c02 payload=00.");
     await this.race.send(RACE_ID.commit, Uint8Array.of(0x00));
     this.committed = true;
+    diagnostic("Command sent; device acceptance is not yet confirmed.");
     const deadline = Date.now() + COMMIT_WAIT_MS;
     while (Date.now() < deadline) {
       let frame: RaceFrame;
@@ -480,20 +487,47 @@ export class Xm4DirectUpdater {
         frame = await this.race.receive(Math.max(1, deadline - Date.now()));
       } catch (error) {
         if (error instanceof BluetoothClosedError) {
-          progress("Headphones disconnected to install the pack. Wait for them to restart.");
+          diagnostic(`Update channel closed (${error.message}); cause unknown. ${accepted ? "A positive commit response was received." : "No positive commit response was received."} Installation is not confirmed by link closure alone.`);
+          if (deviceCancel) diagnostic(`Device cancellation was also observed: ${deviceCancel}.`);
           return;
         }
         if (error instanceof BluetoothTimeoutError) break;
         throw error;
       }
-      if (frame.command === RACE_ID.commit && frame.payload[0] !== 0) {
+      received++;
+      diagnostic(`RX type=0x${frame.type.toString(16).padStart(2, "0")} command=0x${frame.command.toString(16).padStart(4, "0")} payload=${hex(frame.payload) || "(empty)"}.`);
+      if (frame.command === RACE_ID.cancel && frame.type === RACE_TYPE.command) {
+        const reason = frame.payload[2];
+        const reasons: Record<number, string> = { 0: "cancelled", 1: "failed", 2: "timed out", 3: "partner lost", 4: "not allowed" };
+        deviceCancel = reason === undefined ? "truncated cancellation payload" : `${reasons[reason] ?? "unknown reason"} (0x${reason.toString(16).padStart(2, "0")})`;
+        diagnostic(`Device requested FOTA cancellation: ${deviceCancel}. Diagnostic mode preserves the existing wait and cleanup sequence; no cancellation acknowledgement is added.`);
+      }
+      if (frame.command !== RACE_ID.commit) continue;
+      if (!frame.payload.length) {
+        diagnostic("Commit frame has no status byte; it cannot confirm acceptance or rejection.");
+        continue;
+      }
+      if (frame.type === RACE_TYPE.response && frame.payload[0] === 0) {
+        accepted = true;
+        diagnostic("Positive commit response received (status 0x00); waiting for channel closure. Installation is not yet confirmed.");
+      } else if (frame.payload[0] === 0) {
+        diagnostic("Zero-status commit frame has an unexpected type; acceptance is not confirmed.");
+      }
+      if (frame.payload[0] !== 0) {
+        diagnostic(`Commit rejection observed: status 0x${frame.payload[0].toString(16).padStart(2, "0")}, type 0x${frame.type.toString(16).padStart(2, "0")}.`);
         this.committed = false;
         throw new Error(`Headphones refused the install (status 0x${frame.payload[0].toString(16)}).`);
       }
     }
     // s6.b.g: commit without a disconnect is reported as COMMIT_FAIL.
     this.committed = false;
-    throw new CommitUnconfirmedError(`Headphones accepted the install command but did not restart within ${COMMIT_WAIT_MS / 1000} s. Power-cycle them and check the voice guidance.`);
+    const evidence = deviceCancel
+      ? `Device requested FOTA cancellation: ${deviceCancel}.`
+      : accepted ? "A positive commit response was received."
+      : received === 0 ? "No incoming RACE frames were received after sending commit; acceptance is not confirmed."
+      : "Incoming RACE frames were received, but no positive commit response; acceptance is not confirmed.";
+    diagnostic(`Restart wait timed out. ${evidence} Installation status is unresolved; existing FOTA cancel and update-mode cleanup will run.`);
+    throw new CommitUnconfirmedError(`Update channel did not close within ${COMMIT_WAIT_MS / 1000} s. ${evidence} Installation status is unresolved. Power-cycle them and check the voice guidance.`);
   }
 
   private async readVoiceStatus(progress: Progress): Promise<void> {
